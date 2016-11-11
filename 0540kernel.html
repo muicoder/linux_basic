@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	
+	<meta name="Author" content="VBird, 鸟哥">
+	<meta name="Description" content="关于 Linux 的核心编译流程介绍，与注意事项说明！">
+	<title>鸟哥的 Linux 私房菜 -- 第二十四章、Linux 核心编译与管理</title>
+	<style type="text/css">
+	</style>
+	<link href="./vbird_files/style_2013.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+<div class="tablearea">
+<div class="mainarea">
+<div class="block1">
+<!-- 本文的档头部分 -->
+<h1>第二十四章、Linux 核心编译与管理</h1>
+<div style="text-align:right">
+	<span class="text_history">最近更新日期：2015/10/20</span>
+</div>
+<!-- 本文的档头部分 -->
+<div class="abstract">
+	<p>我们说的 Linux 其实指的就是核心 (kernel) 而已。这个核心控制你主机的所有硬件并提供系统所有的功能，
+	所以说，他重不重要啊！我们开机的时候其实就是利用开机管理程序加载这个核心文件来侦测硬件，
+	在核心加载适当的驱动程序后，你的系统才能够顺利的运作。现今的系统由于强调在线升级机制，因此非常不建议自订核心编译！
+	但是，如果你想要将你的 Linux 安装到 USB 随身碟、想要将你的 Eee PC 小笔电安装自己的 Linux ，
+	想让你的 Linux 可以驱动你的小家电，此时，核心编译就是相当重要的一个任务了！
+	这一篇比较高端，如果你对系统移植没有兴趣的话，这一篇可以先略过喔！ ^_^</p>
+</div>
+<!-- 本文的链接区部分 -->
+<div class="links">
+<ul>
+	<li><a href="0540kernel.html#intro">24.1 编译前的任务：认识核心与取得核心原代码</a>
+	<ul>
+		<li><a href="0540kernel.html#intro_whatiskernel">24.1.1 什么是核心 (Kernel)</a></li>
+		<li><a href="0540kernel.html#intro_whyrecompile">24.1.2 更新核心的目的</a></li>
+		<li><a href="0540kernel.html#intro_kernel_version">24.1.3 核心的版本</a></li>
+		<li><a href="0540kernel.html#kernel_source">24.1.4 核心原代码的取得方式</a>：distributions 缺省、最新、patch</li>
+		<li><a href="0540kernel.html#kernel_source_install">21.1.5 核心原代码的解压缩/安装/观察</a></li>
+	</ul></li>
+	<li><a href="0540kernel.html#config">24.2 核心编译的前处理与核心功能选择</a>
+	<ul>
+		<li><a href="0540kernel.html#config_hw">24.2.1 硬件环境查看与核心功能要求</a></li>
+		<li><a href="0540kernel.html#config_mrproper">24.2.2 保持干净原代码： make mrproper</a></li>
+		<li><a href="0540kernel.html#config_config">24.2.3 开始挑选核心功能： make XXconfig</a></li>
+		<li><a href="0540kernel.html#config_kernel">24.2.4 核心功能细项选择</a>
+		<ol type="a">
+			<li><a href="0540kernel.html#general">一般设置(General setup)</a>：附加版本名称、IPC 通信、进程相关等</li>
+			<li><a href="0540kernel.html#load">核心模块与 block layer 支持</a></li>
+			<li><a href="0540kernel.html#cpu">CPU 的类型与功能选择(含虚拟化技术)</a></li>
+			<li><a href="0540kernel.html#power">电源管理功能</a></li>
+			<li><a href="0540kernel.html#networking">核心的网络功能</a></li>
+			<li><a href="0540kernel.html#device">各项设备的驱动程序</a></li>
+			<li><a href="0540kernel.html#filesystem">文件系统的支持</a></li>
+			<li><a href="0540kernel.html#virt">虚拟化与函数库</a></li>
+		</ol>
+	</li></ul></li>
+	<li><a href="0540kernel.html#make">24.3 核心的编译与安装</a>
+	<ul>
+		<li><a href="0540kernel.html#make_kernel">24.3.1 编译核心与核心模块</a></li>
+		<li><a href="0540kernel.html#make_module">24.3.2 实际安装模块</a></li>
+		<li><a href="0540kernel.html#make_install">24.3.3 开始安装新核心与多重核心菜单 (grub)</a></li>
+	</ul></li>
+	<li><a href="0540kernel.html#module">24.4 额外(单一)核心模块编译</a>
+	<ul>
+		<li><a href="0540kernel.html#module_before">24.4.1 编译前注意事项</a></li>
+		<li><a href="0540kernel.html#module_compile">24.4.2 单一模块编译</a></li>
+		<li><a href="0540kernel.html#module_mod">24.4.3 核心模块管理</a></li>
+	</ul></li>
+	<li><a href="0540kernel.html#mainline">24.5 以最新核心版本编译 CentOS 7.x 的核心</a></li>
+	<li><a href="0540kernel.html#hint">24.6 重点回顾</a></li>
+	<li><a href="0540kernel.html#ex">24.7 本章习题</a></li>
+	<li><a href="0540kernel.html#reference">24.8 参考数据与延伸阅读</a></li>
+</ul>
+</div>
+</div>
+<!-- 本文的正式部分 -->
+<a id="intro"></a>
+<div class="block1">
+<h2>24.1 编译前的任务：认识核心与取得核心原代码</h2>
+	<p>我们在<a href="0110whatislinux.html">第一章</a>里面就谈过 Linux 其实指的是核心！这个『核心 
+	(kernel)』是整个操作系统的最底层，他负责了整个硬件的驱动，以及提供各种系统所需的核心功能，包括防火墙机制、是否支持 
+	LVM 或 Quota 等文件系统等等，这些都是核心所负责的！所以啰，在<a href="0510osloader.html">第十九章</a>的开机流程中，我们也会看到 MBR 内的 loader 加载核心文件来驱动整个系统的硬件呢！
+	也就是说，如果你的核心不认识某个最新的硬件，那么该硬件也就无法被驱动，你当然也就无法使用该硬件啰！</p>
+	<a id="intro_whatiskernel"></a>
+	<div class="block2"><div class="gototop"><a href="0540kernel.html#top">Top</a></div>
+	<h2>24.1.1 什么是核心 (Kernel)</h2>
+		<p>这已经是整个 Linux 基础的最后一篇了，所以，底下这些数据你应该都要『很有概念』才行～
+		不能只是『好像有印象』～好了，那就复习一下核心的相关知识吧！</p>
+		<ul class="toplist"><li>Kernel</li></ul>
+		<p>还记得我们在<a href="0320bash.html">第十章的 BASH shell</a> 
+		提到过：电脑真正在工作的东西其实是『<span class="text_import2">硬件</span>』，
+		例如数值运算要使用到 CPU、数据保存要使用到硬盘、图形显示会用到显卡、音乐发声要有音效芯片、连接 Internet 
+		可能需要网络卡等等。那么如何控制这些硬件呢？那就是核心的工作了！也就是说，你所希望电脑帮你达成的各项工作，
+		都需要透过『<span class="text_import2">核心</span>』的帮助才行！当然啰，如果你想要达成的工作是核心所没有提供的，
+		那么你自然就没有办法透过核心来控制电脑使他工作啰！</p>
+		<p>举例来说，如果你想要有某个网络功能 (例如核心防火墙机制) ，但是你的核心偏偏忘记加进去这项功能，
+		那么不论你如何『卖力』的设置该网络套件，很抱歉！不来电！换句话说，<span class="text_import2">你想要让电脑进行的工作，都必须要『核心有支持』才可以</span>！这个标准不论在 Windows 或 
+		Linux 这几个操作系统上都相同！如果有一个人开发出来一个『全新的硬件』，目前的核心不论
+		Windows 或 Linux 都不支持，那么不论你用什么系统，哈哈！这个硬件都是英雄无用武之地啦！
+		那么是否了解了『核心』的重要了呢？所以我们才需要来了解一下如何编译我们的核心啦！</p>
+		<p>那么核心到底是什么啊？<span class="text_import2">其实核心就是系统上面的一个文件而已，
+		这个文件包含了驱动主机各项硬件的侦测程序与驱动模块</span>。在<a href="0510osloader.html">第十九章的开机流程分析</a>中，我们也提到这个文件被读入主内存的时机，
+		当系统读完 BIOS 并加载 MBR 内的开机管理程序后，就能够加载核心到内存当中。然后核心开始侦测硬件，
+		挂载根目录并取得核心模块来驱动所有的硬件，之后调用 systemd 就能够依序启动所有系统所需要的服务了！</p>
+		<p>这个核心文件通常被放置成 /boot/vmlinuz-xxx ，不过也不见得，<span class="text_import2">
+		因为一部主机上面可以拥有多个核心文件，只是开机的时候仅能选择一个来加载而已</span>。
+		甚至我们也可以在一个 distribution 上面放置多个核心，然后以这些核心来做成多重开机呢！</p>
+		<ul class="toplist"><li>核心模块 (kernel module) 的用途</li></ul>
+		<p>既然核心文件都已经包含了硬件侦测与驱动模块，那么什么是核心模块啊？要注意的是，
+		现在的硬件更新速度太快了，如果我的核心比较旧，但我换了新的硬件，那么，这个核心肯定无法支持！
+		怎么办？重新拿一个新的核心来处理吗？开玩笑～核心的编译过程可是很麻烦的～</p>
+		<p>所以啰，为了这个缘故，我们的 Linux  很早之前就已经开始使用所谓的模块化设置了！
+		亦即是将一些不常用的类似驱动程序的咚咚独立出核心，编译成为模块，然后，
+		核心可以在系统正常运作的过程当中加载这个模块到核心的支持。如此一来，
+		我在不需要更动核心的前提之下，只要编译出适当的核心模块，并且加载他，呵呵！我的 Linux 
+		就可以使用这个硬件啦！简单又方便！</p>
+		<p>那我的模块放在哪里啊？可恶！怎么会问这个傻问题呢？当然一定要知道的啦！就是 <span class="text_import2" style="font-family: &#39;细明体&#39;">/lib/modules/$(uname -r)/kernel/</span> 当中啦！</p>
+		<ul class="toplist"><li>自制核心 - 核心编译</li></ul>
+		<p>刚刚上面谈到的核心其实是一个文件，那么这个文件怎么来的？当然是透过原代码 (source code) 
+		编译而成的啊！因为核心是直接被读入到主内存当中的，所以当然要将他编译成为系统可以认识的数据才行！也就是说，
+		我们必须要取得核心的原代码，然后利用<a href="0520source_code_and_tarball.html">第二十一章 Tarball</a> 
+		安装方式提到的编译概念来达成核心的编译才行啊！(这也是本章的重点啊！ ^_^)</p>
+		<ul class="toplist"><li>关于驱动程序 - 是厂商的责任还是核心的责任？</li></ul>
+		<p>现在我们知道硬件的驱动程序可以编译成为核心模块，所以可以在不改变核心的前提下驱动你的新硬件。
+		但是，很多朋友还是常常感到困惑，就是 Linux 上面针对最新硬件的驱动程序总是慢了几个脚步，
+		所以觉得好像 Linux 的支持度不足！其实不可以这么说的，为什么呢？因为在 
+		Windows 上面，对于最新硬件的驱动程序需求，基本上，也都是厂商提供的驱动程序才能让该硬件工作的，
+		因此，<span class="text_import2">在这个『驱动程序开发』的工作上面来说，应该是属于硬件发展厂商的问题</span>，
+		因为他要我们买他的硬件，自然就要提供消费者能够使用的驱动程序啦！</p>
+		<p>所以，如果大家想要让某个硬件能够在 Linux 上面跑的话，那么似乎可以发起一人一信的方式，强烈要求硬件开发商发展
+		Linux 上面的驱动程序！这样一来，也可以促进 Linux 的发展呢！</p>
+	<br></div><br>
+	<a id="intro_whyrecompile"></a>
+	<div class="block2"><div class="gototop"><a href="0540kernel.html#top">Top</a></div>
+	<h2>24.1.2 更新核心的目的</h2>
+		<p>除了 BIOS (或 UEFI) 之外，核心是操作系统中最早被加载到内存的咚咚，
+		他包含了所有可以让硬件与软件工作的信息，所以，如果没有搞定核心的话，
+		那么你的系统肯定会有点小问题！好了，那么是不是将『<span class="text_import2">所有目前核心有支持的东西都给他编译进去我的核心中，
+		那就可以支持目前所有的硬件与可运行的工作啦！</span>』！</p>
+		<p>这话说的是没错啦，但是你是否曾经看过一个为了怕自己今天出门会口渴、会饿、会冷、会热、会被车撞、
+		会摔跤、会被性骚扰，而在自己的大包包里面放了大瓶矿泉水、便当、厚外套、短裤、防撞钢梁、止滑垫、
+		电击棒....等一大堆东西，结果却累死在半路上的案例吗？当然有！但是很少啦！我相信不太有人会这样做！
+		(会这么做的人通常都已经在医院了～) 取而代之的是会看一下天气，冷了就只带外套，
+		热了就只带短衣、如果穿的漂亮一点又预计晚点回家就多带个电击棒、
+		出远门到没有便利商店的地方才多带矿泉水....</p>
+		<p>说这个干什么！对啦！就是要你了解到，核心的编译重点在于『<span class="text_import2">你要你的
+		Linux 作什么？</span>』，是啦！如果没有必要的工作，就干脆不要加在你的核心当中了！这样才能让你的
+		Linux 跑得更稳、更顺畅！这也是为什么我们要编译核心的最主要原因了！</p>
+		<ul class="toplist"><li>Linux 核心特色，与缺省核心对终端用户的角色</li></ul>
+		<p>Linux 的核心有几个主要的特色，除了『<span class="text_import2">Kernel 
+		可以随时、随各人喜好而更动</span>』之外，<span class="text_import2">Kernel
+		的『版本更动次数太频繁</span>』也是一个特点！所以啰，除非你有特殊需求，
+		否则一次编译成功就可以啦！不需要随时保持最新的核心版本，而且也没有必要
+		(编译一次核心要粉久的ㄋㄟ！) 。</p>
+		<p>那么<span class="text_import2">是否『我就一定需要在安装好了 Linux 之后就赶紧给他编译核心呢？</span>』，
+		老实说，『并不需要的』！这是因为几乎每一个 distribution 都已经缺省编译好了相当大量的模块了，
+		所以用户常常或者可能会使用到的数据都已经被编译成为模块，也因此，呵呵！
+		我们用户确实不太需要重新来编译核心！尤其是『<span class="text_import2">一般的用户，
+		由于系统已经将核心编译的相当的适合一般用户使用了，因此一般入门的用户，基本上，
+		不太需要编译核心</span>』。</p>
+		<ul class="toplist"><li>核心编译的可能目的</li></ul>
+		<p>OK！那么鸟哥闲闲没事干跑来写个什么东西？既然都不需要编译核心还写编译核心的分享文章，
+		鸟哥卖弄才学呀？很抱歉，鸟哥虽然是个『不学有术』的混混，却也不会平白无故的写东西请您来指教～
+		当然是有需要才会来编译核心啦！编译核心的时机可以归纳为几大类：</p>
+		<ul>
+		<li><span class="text_import2">新功能的需求</span>：<br>
+		我需要新的功能，而这个功能只有在新的核心里面才有，那么为了获得这个功能，只好来重新编译我的核心了。例如 
+		iptables 这个防火墙机制只有在 2.4.xx 以后的版本里面才有，而新开发的主板芯片组，
+		很多也需要新的核心推出之后，才能正常而且有效率的工作！<br><br></li>
+		<li><span class="text_import2">原本核心太过臃肿</span>：<br>
+		如果你是那种对于系统『稳定性』很要求的人，对于核心多编译了很多莫名其妙的功能而不太喜欢的时候，
+		那么就可以重新编译核心来取消掉该功能啰；<br><br></li>
+		<li><span class="text_import2">与硬件搭配的稳定性</span>：<br>
+		由于原本 Linux 核心大多是针对 Intel 的 CPU 来作开发的，所以如果你的
+		CPU 是 AMD 的系统时，有可能 (注意！只是有可能，不见得一定会如此) 
+		会让系统跑得『不太稳！』。此外，核心也可能没有正确的驱动新的硬件，此时就得重新编译核心来让系统取得正确的模块才好。
+		<br><br></li>
+		<li><span class="text_import2">其他需求 (如嵌入式系统)</span>：<br>
+		就是你需要特殊的环境需求时，就得自行设计你的核心啰！( 
+		像是一些商业的套装软件系统，由于需要较为小而美的操作系统，
+		那么他们的核心就需要更简洁有力了！)</li>
+		</ul>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		话说，2014 年鸟哥为了要搞定 banana pi (一种单版电脑，或者可以称为手机的硬件拿来作 Linux 安装的硬件) 的 CPU 最高时脉限制，
+		因为该限制是直接写入到 Linux 核心当中的，这时就只好针对该硬件的 Linux 核心，修改不到 10 行的代码之后，重新编译！
+		才能将原本限制到 900MHz 的时脉提升到 1.2GHz 哩！
+		</fieldset><br>
+		<p>另外，需要注意重新编译核心虽然可以针对你的硬件作最佳化的步骤 (例如刚刚提到的
+		CPU 的问题！) ，不过由于这些最佳化的步骤对于整体性能的影响是很小很小的，
+		因此如果是为了增加性能来编译核心的话，基本上，效益不大！然而，如果是针对『系统稳定性』来考量的话，
+		那么就有充分的理由来支持你重新编译核心啰！</p>
+		<p>『<span class="text_import2">如果系统已经运行很久了，而且也没有什么大问题，
+		加上我又不增加冷门的硬件设备，那么建议就不需要重新编译核心了』</span>，
+		因为重新编译核心的最主要目的是『想让系统变的更稳！』既然你的
+		Linux 主机已经达到这个目的了，何必再编译核心？不过，就如同前面提到的，
+		由于缺省的核心不见得适合你的需要，加上缺省的核心可能并无法与你的硬件配备相配合，
+		此时才开始考虑重新编译核心吧！</p>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		早期鸟哥是强调最好重新编译核心的一群啦！不过，这个想法改变好久了～
+		既然原本的 distribution  都已经帮我们考虑好如何使用核心了，那么，
+		我们也不需要再重新的编译核心啦！尤其是 distribution 都会主动的发布新版的核心 RPM 版本，
+		所以，实在不需要自己重新编译的！当然啦，如同前面提到的，如果你有特殊需求的话，那就另当别论噜！ ^_^
+		</fieldset><br>
+		<p>由于『<span class="text_import2">核心的主要工作是在控制硬件</span>！』所以编译核心之前，
+		请先了解一下你的硬件配备，与你这部主机的未来功能！由于核心是『<span class="text_import2">越简单越好</span>！』所以只要将这部主机的未来功能给他编进去就好了！
+		其他的就不用去理他啦！</p>
+	<br></div><br>
+	<a id="intro_kernel_version"></a>
+	<div class="block2"><div class="gototop"><a href="0540kernel.html#top">Top</a></div>
+	<h2>24.1.3 核心的版本</h2>
+		<p>核心的版本问题，我们在<a href="0110whatislinux.html#torvalds_team">第一章</a>已经谈论过，
+		目前 CentOS 7 使用的 3.10.x 版本为长期维护版本，不过理论上我们也可以升级到后续的主线版本上面！不会像以前 2.6.x 只能升级到 2.6.x 的后续版本，
+		而不能改成其他主线版本。不过这也只是『理论上』而已，因为目前许多的软件依旧与核心版本有关，例如那个虚拟化软件 qemu 之类的，
+		与核心版本之间是有搭配性的关系的，所以，除非你要一口气连同核心相依的软件通通升级，否则最好使用长期维护版本的最新版来处理较佳。</p>
+		<p>举例来说，CentOS 7 使用的是 3.10.0 这个长期版本，而目前 (2015/09) 这个 3.10 长期版本，最新的版本为 3.10.89，意思是说，
+		你最好是拿 3.10.89 来作为核心升级的依据，而不是拿最新的 4.2.1 来升级的意思。</p>
+		<p>虽然理论上还是拿自家长期维护版本的最新版本来处理比较好，不过鸟哥因为需要研究虚拟化的 PCI passthrough 技术，
+		确实也曾经在 CentOS 7.1 的系统中将 3.10.x 的版本升级到 4.2.3 这个版本上！这样才完成了 VGA 的 PCI passthrough 功能！
+		所以说，如果你真的想要使用较新的版本来升级，也不是不可以，只是后果会发生什么问题，就得要自行负责啰！</p>
+	<br></div><br>
+	<a id="kernel_source"></a>
+	<div class="block2"><div class="gototop"><a href="0540kernel.html#top">Top</a></div>
+	<h2>24.1.4 核心原代码的取得方式</h2>
+		<p>既然核心是个文件，要制作这个文件给系统使用则需要编译，既然要有编译，当然就得要有原代码啊！
+		那么原代码怎么来？基本上，依据你的 distributions 去挑选的核心原代码来源主要有：</p>
+		<ul class="toplist"><li>原本 distribution 提供的核心原代码文件</li></ul>
+		<p>事实上，各主要 distributions 在推出他们的产品时，其实已经都附上了核心原代码了！
+		不过因为目前数据量太庞大，因此 SRPM 缺省已经不给映射站下载了！主要的原代码都放置于底下的网站上：</p>
+		<ul>
+			<li>全部的 CentOS 原始 SRPM：<a href="http://vault.centos.org/" target="_blank">http://vault.centos.org/</a></li>
+			<li>CentOS 7.1 的 SRPM：<a href="http://vault.centos.org/7.1.1503/" target="_blank">http://vault.centos.org/7.1.1503/</a></li></ul>
+		<p>CentOS 7.x 开始的版本中，其版本后面会接上发布的日期，因为 CentOS 7.1 是 2015/03 发布的，因此它的下载点就会是在 7.1.1503 啰！1503 指的就是 2015/03 的意思～
+		你可以进入上述的网站后，到 updates 目录下，一层一层的往下找，就可以找到 kernel 相关的 SRPM 啰！</p>
+		<p>你或许会说：既然要重新编译，那么干嘛还要使用原本 distributions 发布的原代码啊？真没创意～
+		话不是这么说，因为原本的 distribution 发布的原代码当中，含有他们设置好的缺省设置值，
+		所以，我们可以轻易的就了解到当初他们是如何选择与核心及模块有关的各项设置项目的参数值，
+		那么就可以利用这些可以配合我们 Linux 系统的缺省参数来加以修改，如此一来，
+		我们就可以『修改核心，调整到自己喜欢的样子』啰！而且编译的难度也会比较低一点！</p>
+		<ul class="toplist"><li>取得最新的稳定版核心原代码</li></ul>
+		<p>虽然使用 distribution 发布的核心 source code 来重新编译比较方便，但是，如此一来，
+		新硬件所需要的新驱动程序，也就无法借由原本的核心原代码来编译啊！
+		所以啰，如果是站在要更新驱动程序的立场来看，当然使用最新的核心可能会比较好啊！</p>
+		<p>Linux 的核心目前是由其发明者 Linus Torvalds 所属团队在负责维护的，而其网站在底下的站址上，在该网站上可以找到最新的
+		kernel 信息！不过，美中不足的是目前的核心越来越大了 (linux-3.10.89.tar.gz 
+		这一版，这一个文件大约 105MB 了！)，所以如果你的 ISP 连外很慢的话，那么使用台湾的映射站台来下载不失为一个好方法：</p>
+		<ul>
+		<li><a href="http://www.kernel.org/pub/linux/kernel/" target="_blank">核心官网：http://www.kernel.org/</a></li>
+		<li><a href="ftp://linux.cis.nctu.edu.tw/kernel/linux/kernel/" target="_blank">交大资科：ftp://linux.cis.nctu.edu.tw/kernel/linux/kernel/</a></li>
+		<li><a href="ftp://ftp.twaren.net/pub/Unix/Kernel/linux/kernel/" target="_blank">国高中心：ftp://ftp.twaren.net/pub/Unix/Kernel/linux/kernel/</a></li>
+		</ul>
+		<ul class="toplist"><li>保留原本设置：利用 patch 升级核心原代码</li></ul>
+		<p>如果 (1)你曾经自行编译过核心，那么你的系统当中应该已经存在前几个版本的核心原代码，
+		以及上次你自行编译的参数设置值才对； (2)如果你只是想要在原本的核心底下加入某些特殊功能，
+		而该功能已经针对核心原代码推出 patch 补丁文件时。那你该如何进行核心原代码的更新，以便后续的编译呢？</p>
+		<p>其实每一次核心发布时，除了发布完整的核心压缩档之外，也会发布『该版本与前一版本的差异性 patch 文件』，
+		关于 patch 的制作我们已经在<a href="0520source_code_and_tarball.html#tarball_patch">第二十一章</a>当中提及，
+		你可以自行前往参考。这里仅是要提供给你的信息是，每个核心的 patch 仅有针对前一版的核心来分析而已，
+		所以，万一你想要由 3.10.85 升级到 3.10.89 的话，那么你就得要下载
+		patch-3.10.86, patch-3.10.87, patch-3.10.88, patch-3.10.89 等文件，然后『依序』一个一个的去进行 patch 的动作后，
+		才能够升级到 3.10.89 喔！这个重要！不要忘记了。</p>
+		<p>同样的，如果是某个硬件或某些非官方认定的核心添加功能网站所推出的 patch 文件时，你也必须要了解该 patch 
+		文件所适用的核心版本，然后才能够进行 patch ，否则容易出现重大错误喔！这个项目对于某些商业公司的工程师来说是很重要的。
+		举例来说，鸟哥的一个高中同学在业界服务，他主要是进行类似 Eee PC 开发的计划，然而该计划的硬件是该公司自行推出的！
+		因此，该公司必须要自行搭配核心版本来设计他们自己的驱动程序，而该驱动程序并非 GPL 
+		授权，因此他们就得要自行将驱动程序集成进核心！如果改天他们要将这个驱动程序发布，那么就得要利用 patch 的方式，
+		将硬件驱动程序文件发布，我们就得要自行以 patch 来更新核心啦！</p>
+		<p>在进行完 patch 之后，你可以直接检查一下原本的设置值，如果没有问题，
+		就可以直接编译，而不需要再重新的选择核心的参数值，这也是一个省时间的方法啊！
+		至于 patch file 的下载，同样是在 kernel 的相同目录下，寻找文件名是 patch 开头的就是了。</p>
+	<br></div><br>
+	<a id="kernel_source_install"></a>
+	<div class="block2"><div class="gototop"><a href="0540kernel.html#top">Top</a></div>
+	<h2>24.1.5 核心原代码的解压缩/安装/观察</h2>
+		<p>其实，不论是从 CentOS 官网取得的 SRPM 或者是从 Linux kernel 官网取得的 tarball 核心原代码，最终都会有一个 tarball 的核心原代码就是了！
+		因此，鸟哥从 linux kernel 官网取得 linux-3.10.89.tar.xz 这个核心文件，这个核心文件的原代码是从底下的网址取得的：</p>
+		<ul><li><a href="ftp://ftp.twaren.net/pub/Unix/Kernel/linux/kernel/v3.x/linux-3.10.89.tar.xz" target="_blank">ftp://ftp.twaren.net/pub/Unix/Kernel/linux/kernel/v3.x/linux-3.10.89.tar.xz</a></li></ul>
+		<ul class="toplist"><li>核心原代码的解压缩与放置目录</li></ul>
+		<p>鸟哥这里假设你也是下载上述的链接内的文件，然后该文件放置到 /root 底下。由于 Linux 核心原代码一般建议放置于
+		/usr/src/kernels/ 目录底下，因此你可以这样处理：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">tar -Jxvf linux-3.10.89.tar.xz -C /usr/src/kernels/</span>
+</pre></td></tr></tbody></table>
+		<p>此时会在 /usr/src/kernels 底下产生一个新的目录，那就是 linux-3.10.89 这个目录啰！
+		我们在下个小节会谈到的各项编译与设置，都必须要在这个目录底下进行才行喔！好了，那么这个目录底下的相关文件有啥咚咚？
+		底下就来谈谈：</p>
+		<ul class="toplist"><li>核心原代码下的次目录</li></ul>
+		<p>在上述核心目录下含有哪些重要数据呢？基本上有底下这些东西：</p>
+		<ul style="font-family: &#39;细明体&#39;">
+		<li>arch ：与硬件平台有关的项目，大部分指的是 CPU 的类别，例如 x86, x86_64, Xen 虚拟支持等；</li>
+		<li>block ：与区块设备较相关的设置数据，区块数据通常指的是大量保存媒体！还包括类似 ext3 等文件系统的支持是否允许等。</li>
+		<li>crypto ：核心所支持的加密的技术，例如 md5 或者是 des 等等；</li>
+		<li>Documentation ：与核心有关的一堆说明文档，若对核心有极大的兴趣，要瞧瞧这里！</li>
+		<li>drivers ：一些硬件的驱动程序，例如显卡、网络卡、PCI 相关硬件等等；</li>
+		<li>firmware ：一些旧式硬件的微脚本 (固件) 数据；</li>
+		<li>fs ：核心所支持的 filesystems ，例如 vfat, reiserfs, nfs 等等；</li>
+		<li>include ：一些可让其他进程调用的标头 (header) 定义数据；</li>
+		<li>init ：一些核心初始化的定义功能，包括挂载与 init 程序的调用等；</li>
+		<li>ipc ：定义 Linux 操作系统内各进程的沟通；</li>
+		<li>kernel ：定义核心的进程、核心状态、线程、进程的调度 (schedule)、进程的信号 (signle) 等</li>
+		<li>lib ：一些函数库；</li>
+		<li>mm ：与内存单元有关的各项数据，包括 swap 与虚拟内存等；</li>
+		<li>net ：与网络有关的各项协定数据，还有防火墙模块 (net/ipv4/netfilter/*) 等等；</li>
+		<li>security ：包括 selinux 等在内的安全性设置；</li>
+		<li>sound ：与音效有关的各项模块；</li>
+		<li>virt ：与虚拟化机器有关的信息，目前核心支持的是 KVM (Kernel base Virtual Machine)</li>
+		</ul>
+		<p>这些数据先大致有个印象即可，至少未来如果你想要使用 patch 的方法加入额外的新功能时，
+		你要将你的原代码放置于何处？这里就能够提供一些指引了。当然，最好还是跑到 Documentation 那个目录底下去瞧瞧正确的说明，
+		对你的核心编译会更有帮助喔！</p>
+	<br></div>
+</div>
+<a id="config"></a>
+<div class="block1">
+<h2>24.2 核心编译的前处理与核心功能选择</h2>
+	<p>什么？核心编译还要进行前处理？没错啦！事实上，核心的目的在管理硬件与提供系统核心功能，因此你必须要先找到你的系统硬件，
+	并且规划你的主机未来的任务，这样才能够编译出适合你这部主机的核心！所以，整个核心编译的重要工作就是在『挑选你想要的功能』。
+	底下鸟哥就以自己的一部主机软/硬件环境来说明，解释一下如何处理核心编译啰！</p>
+	<a id="config_hw"></a>
+	<div class="block2"><div class="gototop"><a href="0540kernel.html#top">Top</a></div>
+	<h2>24.2.1 硬件环境查看与核心功能要求</h2>
+		<p>鸟哥的一部主机硬件环境如下 (在虚拟机中，透过 /proc/cpuinfo  及 lspci 观察)：</p>
+		<ul>
+		<li>CPU：Intel(R) Xeon(R) CPU E5-2650</li>
+		<li>主板芯片组： KVM 虚拟化仿真的主版 (Intel 440FX 兼容)</li>
+		<li>显卡： Red Hat, Inc. QXL paravirtual graphic card </li>
+		<li>内存： 2.0GB 内存</li>
+		<li>硬盘： KVM Virtio 界面磁盘 40G (非 IDE/SATA/SAS 喔！)</li>
+		<li>网络卡： Red Hat, Inc Virtio network device</li>
+		</ul>
+		<p>硬件大致如上，至于这部主机的需求，是希望做为未来在鸟哥上课时，可以透过虚拟化功能来处理学生的练习用虚拟机。
+		这部主机也是鸟哥用来放置学校上课教材的机器，因此，这部主机的 I/O 需求须要好一点，未来还需要开启防火墙、
+		WWW 服务器功能、FTP 服务器功能等，基本上，用途就是一部小型的服务器环境啰。大致上需要这样的功能啦！</p>
+	<br></div><br>
+	<a id="config_mrproper"></a>
+	<div class="block2"><div class="gototop"><a href="0540kernel.html#top">Top</a></div>
+	<h2>24.2.2 保持干净原代码： make mrproper</h2>
+		<p>了解了硬件相关的数据后，我们还得要处理一下核心原代码底下的残留文件才行！假设我们是第一次编译，
+		但是我们不清楚到底下载下来的原代码当中有没有保留目标文件 (*.o) 以及相关的设置档存在，
+		此时我们可以透过底下的方式来处理掉这些『编译过程的目标文件以及设置档』：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">cd /usr/src/kernels/linux-3.10.89/</span>
+[root@study linux-3.10.89]# <span class="term_command">make mrproper</span>
+</pre></td></tr></tbody></table>
+		<p>请注意，<span class="text_import2">这个动作会将你以前进行过的核心功能选择文件也删除掉</span>，
+		所以几乎只有第一次运行核心编译前才进行这个动作，其余的时刻，你想要删除前一次编译过程的残留数据，
+		只要下达：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study linux-3.10.89]# <span class="term_command">make clean</span>
+</pre></td></tr></tbody></table>
+		<p>因为 make clean 仅会删除类似目标档之类的编译过程产生的中间文件，而不会删除设置档！
+		很重要的！千万不要搞乱了喔！好了，既然我们是第一次进行编译，因此，请下达『make mrproper』吧！</p>
+	<br></div><br>
+	<a id="config_config"></a>
+	<div class="block2"><div class="gototop"><a href="0540kernel.html#top">Top</a></div>
+	<h2>24.2.3 开始挑选核心功能： make XXconfig</h2>
+		<p>不知道你有没有发现 /boot/ 底下存在一个名为 config-xxx 的文件？那个文件其实就是核心功能列表档！
+		我们底下要进行的动作，其实就是作出该文件！而我们后续小节所要进行的编译动作，其实也就是透过这个文件来处理的！
+		核心功能的挑选，最后会在 /usr/src/kernels/linux-3.10.89/ 底下产生一个名为 .config 的隐藏档，
+		这个文件就是 /boot/config-xxx 的文件啦！那么这个文件如何创建呢？你可以透过非常多的方法来创建这个文件！
+		常见的方法有：(<a href="0540kernel.html#ps1">注1</a>)</p>
+		<ul>
+		<li><span class="text_import2">make menuconfig</span><br>
+		最常使用的，是文本模式底下可以显示类似图形接口的方式，不需要启动 X Window 就能够挑选核心功能菜单！<br><br></li>
+		<li><span class="text_import2">make oldconfig</span><br>
+		透过使用已存在的 ./.config 文件内容，使用该文件内的设置值为默认值，只将新版本核心内的新功能选项列出让用户选择，
+		可以简化核心功能的挑选过程！对于作为升级核心原代码后的功能挑选来说，是非常好用的一个项目！<br><br></li>
+		<li><span class="text_import2">make xconfig</span><br>
+		透过以 Qt 为图形接口基础功能的图形化接口显示，需要具有 X window 的支持。例如 KDE 就是透过 Qt 来设计的 X
+		Window，因此你如果在 KDE 画面中，可以使用此一项目。<br><br></li>
+		<li><span class="text_import2">make gconfig</span><br>
+		透过以 Gtk 为图形接口基础功能的图形化接口显示，需要具有 X window 的支持。例如 GNOME 就是透过 Gtk 来设计的 X
+		Window，因此你如果在 GNOME 画面中，可以使用此一项目。<br><br></li>
+		<li><span class="text_import2">make config</span><br>
+		最旧式的功能挑选方法，每个项目都以条列式一条一条的列出让你选择，如果设置错误只能够再次选择，很不人性化啊！</li>
+		</ul>
+		<p>大致的功能选择有上述的方法，更多的方式可以参考核心目录下的 README 文件。鸟哥个人比较偏好 make menuconfig 这个项目啦！如果你喜欢使用图形接口，
+		然后使用鼠标去挑选所需要的功能时，也能使用 make xconfig 或 make gconfig ，不过需要有相关的图形接口支持！
+		如果你是升级核心原代码并且需要重新编译，那么使用 make oldconfig 会比较适当！</p>
+		<ul class="toplist"><li>透过既有的设置来处理核心项目与功能的选择</li></ul>
+		<p>如果你跟鸟哥一样懒，那可以这样思考一下。既然我们的 CentOS 7 已经有提供它的核心设置值，我们也只是想要修改一些小细节而已，
+		那么能不能以 CentOS 7 的核心功能为底，然后来细部微调其它的设置呢？当然可以啊！你只要这样做即可：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study linux-3.10.89]# <span class="term_command">cp /boot/config-3.10.0-229.11.1.el7.x86_64 .config</span>
+<span class="term_say"># 上面那个版本请依据你自己的环境来填写～</span>
+</pre></td></tr></tbody></table>
+		<p>接下来要开始调整啰！那么如何选择呢？以 make menuconfig 来说，出现的画面会有点像这样：</p>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		注意，你可能会被要求安装好多软件，请自行使用 yum 来安装喔！这里不再介绍了！
+		另外：『不要再使用 make mrproper 』喔！因为我们已经复制了 .config 啊！使用 make mrproper 会将 .config 删除喔！
+		</fieldset><br>
+	<a id="fig24.2.1"></a>
+	<div style="text-align:center; margin: 0 auto 0 auto; "><img src="./vbird_files/kernel-01.jpg" alt="make menuconfig 核心功能挑选菜单示意图" title="make menuconfig 核心功能挑选菜单示意图" style="border: 1px solid black; padding: 10px "></div>
+	<div style="text-align: center;">图24.2.1、make menuconfig 核心功能挑选菜单示意图</div>
+		<p>看到上面的图标之后，你会发现画面主要分为两大部分，一个是大框框内的反白光柱，另一个则是底下的小框框，
+		里面有 select, exit 与 help 三个选项的内容。这几个组件的大致用法如下：</p>
+		<ul class="text_import2">
+		<li>『左右方向键』：可以移动最底下的 &lt;Select&gt;, &lt;Exit&gt;, &lt;Help&gt;项目；</li>
+		<li>『上下方向键』：可以移动上面大框框部分的反白光柱，若该行有箭头 (---&gt;) 
+		则表示该行内部还有其他细项需要来设置的意思；</li>
+		<li>选定项目：以『上下键』选择好想要设置的项目之后，并以『左右键』选择 &lt;Select&gt; 之后，
+		按下『 Enter 』就可以进入该项目去作更进一步的细部设置啰；</li>
+		<li>可挑选之功能：在细部项目的设置当中，如果前面有 [ ] 或 &lt; &gt; 符号时，该项目才可以选择，
+		而选择可以使用『空白键』来选择；</li>
+		<li>若为 [*] &lt;*&gt; 则表示编译进核心；若为 &lt;M&gt; 则表示编译成模块！
+		尽量在不知道该项目为何时，且有模块可以选，那么就可以直接选择为模块啰！</li>
+		<li>当在细项目选择 &lt;Exit&gt; 后，并按下 Enter ，那么就可以离开该细部项目啰！</li>
+		</ul>
+		<p>基本上建议只要『上下左右的方向键、空白键、Enter』这六个按键就好了！不要使用 Esc 
+		，否则一不小心就有可能按错的！另外，关于整个核心功能的选择上面，建议你可以这样思考：</p>
+		<ul class="text_import2">
+		<li>『肯定』核心一定要的功能，直接编译进核心内；</li>
+		<li>『可能在未来会用到』的功能，那么尽量编译成为模块；</li>
+		<li>『不知道那个东西要干嘛的，看 help 也看不懂』的话，那么就保留默认值，或者将他编译成为模块；</li>
+		</ul>
+		<p>总之，尽量保持核心小而美，剩下的功能就编译成为模块，尤其是『需要考虑到未来扩充性』，
+		像鸟哥之前认为螃蟹卡就够我用的了，结果，后来竟然网站流量大增，鸟哥只好改换 3Com 的网络卡。
+		不过，我的核心却没有相关的模块可以使用～因为.....鸟哥自己编译的核心忘记加入这个模块了。
+		最后，只好重新编译一次核心的模块，呵呵！真是惨痛的教训啊！</p>
+	<br></div><br>
+	<a id="config_kernel"></a>
+	<div class="block2"><div class="gototop"><a href="0540kernel.html#top">Top</a></div>
+	<h2>24.2.4 核心功能细项选择</h2>
+		<p>由上面的图标当中，我们知道核心的可以选择的项目有很多啊！光是第一面，就有 17 
+		个项目，每个项目内还有不同的细项！哇！真是很麻烦啊～每个项目其实都可能有 &lt;Help&gt; 
+		的说明，所以，如果看到不懂的项目，务必要使用 Help 查阅查阅！
+		好了，底下我们就一个一个项目来看看如何选择吧！</p>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		在底下的案例中，因为鸟哥使用的是 CentOS 7.1 的核心设置档来进行缺省的设置，
+		所以基本上许多缺省的设置都不用重新调整。底下只列出几个鸟哥认为比较重要的设置项目。其他更详细的核心功能项目，还请自行参考 help 的说明喔！
+		</fieldset><br>
+		<a id="general"></a>
+		<ul class="toplist"><li>General setup</li></ul>
+		<p>与 Linux 最相关的进程交互、核心版本说明、是否使用发展中代码等信息都在这里设置的。
+		这里的项目主要都是针对核心与程序之间的相关性来设计的，基本上，保留默认值即可！
+		不要随便取消底下的任何一个项目，因为可能会造成某些程序无法被同时运行的困境喔！
+		不过底下有非常多新的功能，如果你有不清楚的地方，可以按 &lt;Help&gt; 
+		进入查阅，里面会有一些建议！ 你可以依据 Help 的建议来选择新功能的启动与否！</p>
+<table class="term"><tbody><tr><td class="term"><pre>(<span class="term_write">vbird</span>)  Local version - append to kernel release
+[<span class="term_write">*</span>] Automatically append version information to the version string
+    <span class="term_say"># 我希望我的核心版本成为 3.10.89.vbird ，那这里可以就这样设置！</span>
+    Kernel compression mode (<span class="term_write">Bzip2</span>)  ---&gt;
+    <span class="term_say"># 建议选择成为 Bzip2 即可，因为压缩比较佳！</span>
+<span class="term_say">.....(其他保留默认值).....</span>
+&lt;M&gt; Kernel .config support
+[ ]   Enable access to .config through /proc/config.gz (NEW)
+    <span class="term_say"># 让 .config 这个核心功能列表可以写入实际的核心文件中！所以就不需要保留 .config 文件啰！</span>
+(<span class="term_write">20</span>) Kernel log buffer size (16 =&gt; 64KB, 17 =&gt; 128KB)
+    <span class="term_say"># CentOS 7 增加了核心的注册表容量！占用了 2 的 20 次方，大概用了 1MB 的容量！</span>
+<span class="term_say">.....(其他保留默认值).....</span>
+[*] Initial RAM filesystem and RAM disk (initramfs/initrd) support
+()    Initramfs source file(s)
+    <span class="term_say"># 这是一定要的！因为要支持开机时加载 initail RAM disk 嘛！</span>
+[<span class="term_write"> </span>] Optimize for size  
+    <span class="term_say"># 减低核心的文件大小，其实 gcc 参数使用 -Os 而不是 -O2。不过我们不是嵌入式系统，不太需要！</span>
+[ ] Configure standard kernel features (expert users)  ---&gt;
+[ ] Embedded system
+    <span class="term_say"># 上面两个在决定是否支持嵌入式系统呢？我们这里是桌机，所以这个不用选择了！</span>
+<span class="term_say">.....(其他保留默认值).....</span>
+</pre></td></tr></tbody></table>
+		<a id="load"></a>
+		<ul class="toplist"><li>loadable module + block layer</li></ul>
+		<p>要让你的核心能够支持动态的核心模块，那么底下的第一个设置就得要启动才行！至于第二个 block layer 则缺省是启动的，
+		你也可以进入该项目的细项设置，选择其中你认为需要的功能即可！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[*] Enable loadable module support  ---&gt; <span class="term_note">&lt;==底下为细项</span>
+  --- Enable loadable module support
+  [*]   Forced module loading
+  [*]   Module unloading
+  [*]     Forced module unloading  <span class="term_note"># 其实鸟哥认为这个项目可能可以选择的！免得常常无法卸载模块！</span>
+  [*]   Module versioning support
+  [*]   Source checksum for all modules
+  [*]   Module signature verification
+  [<span class="term_write"> </span>]     Require modules to be validly signed
+  [*]     Automatically sign all modules
+   <span class="term_write"> </span>    Which hash algorithm should modules be signed with? <span class="term_note"># 可以选择 SHA256 即可！</span>
+<span class="term_say">================================================================================</span>
+  -*- Enable the block layer  ---&gt;  <span class="term_note">&lt;==看吧！缺省就是已经选择了！底下为细项</span>
+  -*-   Block layer SG support v4
+  -*-   Block layer SG support v4 helper lib
+  [*]   Block layer data integrity support
+  [*]   Block layer bio throttling support
+   <span class="term_write"> </span>    Partition Types  ---&gt;  <span class="term_note"># 至少底下的数个项目要选择！</span>
+  [*]     Macintosh partition map support
+  [*]     PC BIOS (MSDOS partition tables) support
+  [*]     Windows Logical Disk Manager (Dynamic Disk) support
+  [*]     SGI partition support
+  [*]     EFI GUID Partition support
+<span class="term_say">.....(其他保留默认值).....</span>
+   <span class="term_write"> </span>    IO Schedulers  ---&gt;  <span class="term_note"># 磁盘队列的处理方式</span>
+  &lt;*&gt;     Deadline I/O scheduler      <span class="term_note"># 鸟哥非常建议将此项目设置为核心功能！</span>
+  &lt;*&gt;     CFQ I/O scheduler 
+  [*]       CFQ Group Scheduling support
+   <span class="term_write"> </span>      Default I/O scheduler (<span class="term_write">Deadline</span>)  ---&gt;  <span class="term_note"># 相当建议改为Deadline</span>
+</pre></td></tr></tbody></table>
+		<a id="cpu"></a>
+		<ul class="toplist"><li>CPU 的类型与功能选择</li></ul>
+		<p>进入『Processor type and features』后，请挑选你主机的实际 CPU 形式。鸟哥这里使用的是 Intel E5 的 CPU，
+		而且鸟哥的主机还有启动 KVM 这个虚拟化的服务 (在一部主机上面同时启动多个操作系统)，因此，所以底下的选择是这样的：</p>
+<table class="term"><tbody><tr><td class="term"><pre><span class="term_say">.....(其他保留默认值).....</span>
+  [*] Linux guest support  ---&gt;     <span class="term_note"># 提供 Linux 虚拟化功能</span>
+  [*]   Enable paravirtualization code   <span class="term_note"># 至少底下这几样一定要有选择才好！</span>
+  [*]     Paravirtualization layer for spinlocks
+  [*]     Xen guest support
+  [*]   KVM Guest support (including kvmclock)
+  [*]   Paravirtual steal time accounting
+<span class="term_say">.....(其他保留默认值).....</span>
+   <span class="term_write"> </span>  Processor family (<span class="term_write">Generic-x86-64</span>)  ---&gt;  <span class="term_note"># 除非你是旧系统，否则就用他！</span>
+  [*] Enable Maximum number of SMP Processors and NUMA Nodes
+  [*] Multi-core scheduler support
+   <span class="term_write"> </span>  Preemption Model (No Forced Preemption (<span class="term_write">Server</span>)  ---&gt;  <span class="term_note"># 调整成 server 喔！原本是 desktop</span>
+<span class="term_say">.....(其他保留默认值).....</span>
+   <span class="term_write"> </span>  Timer frequency (<span class="term_write">300 HZ</span>)  ---&gt;  <span class="term_note"># server 设置成 300 即可！</span>
+    <span class="term_say"># 这个项目则与核心针对某个事件立即回应的速度有关。Server 用途可以调整到
+    # 300Hz 即可，如果是台式机使用，需要调整高一点，例如 1000Hz 较佳！</span>
+<span class="term_say">.....(其他保留默认值).....</span>
+</pre></td></tr></tbody></table>
+		<a id="power"></a>
+		<ul class="toplist"><li>电源管理功能</li></ul>
+		<p>如果选择了『Power management and ACPI options』之后，就会进入系统的电源管理机制中。
+		其实电源管理机制还需要搭配主板以及 CPU 的相关省电功能，才能够实际达到省电的效率啦！
+		不论是 Server 还是 Desktop 的使用，在目前电力不足的情况下，能省电就加以省电吧！</p>
+<table class="term"><tbody><tr><td class="term"><pre><span class="term_say">.....(其他保留默认值).....</span>
+  [<span class="term_write">*</span>] ACPI (Advanced Configuration and Power Interface) Support  ---&gt;
+    <span class="term_say"># 对嵌入式系统来说，由于可能会增加核心容量故需要考虑考虑。至于 desktop/server 当然就选择啊
+    # 至于内容细项大致保持默认值即可</span>
+    CPU Frequency scaling  ---&gt;
+    <span class="term_say"># 决定 CPU 时脉的一个重要项目，基本上的项目是 ondemand 与 performance 两者！</span>
+    &lt;M&gt;   CPU frequency translation statistics
+    [*]     CPU frequency translation statistics details
+          Default CPUFreq governor (<span class="term_write">ondemand</span>)  ---&gt;  <span class="term_note"># 现在大家都建议用这个！</span>
+    -*-   'performance' governor
+    &lt;*&gt;   'powersave' governor
+    &lt;*&gt;   'userspace' governor for userspace frequency scaling
+    -*-   'ondemand' cpufreq policy governor
+    &lt;*&gt;   'conservative' cpufreq governor
+          x86 CPU frequency scaling drivers  ---&gt;
+          <span class="term_say"># 这个子项目内全部都是省电机制，能编成模块的全部选择！要加入核心的都加入就对了！</span>
+</pre></td></tr></tbody></table>
+		<a id="bus"></a>
+		<ul class="toplist"><li>一些总线 (bus) 的选项</li></ul>
+		<p>这个『Bus options (PCI etc.)』项目则与总线有关啦！分为最常见的 PCI 与 PCI-express 的支持，还有笔记型电脑常见的 PCMCIA 
+		插卡啊！要记住的是，那个 PCI-E 的接口务必要选取！不然你的新显卡可能会捉不到！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[*] PCI support
+[*]   Support mmconfig PCI config space access
+[*]   PCI Express support
+&lt;*&gt;     PCI Express Hotplug driver
+<span class="term_say">.....(其他在 PCI Express 底下的项目大多保留默认值).....</span>
+-*- Message Signaled Interrupts (MSI and MSI-X)
+&lt;*&gt; PCI Stub driver   <span class="term_note"># 如果要玩虚拟化，这个部份建议编进核心！</span>
+<span class="term_say">.....(其他保留默认值).....</span>
+</pre></td></tr></tbody></table>
+		<a id="execute"></a>
+		<ul class="toplist"><li>编译后运行档的格式</li></ul>
+		<p>选择『Executable file formats / Emulations』会见到如下选项。
+		底下的选项必须要勾选才行喔！因为是给 Linux 核心运作运行档之用的数据。通常是与编译行为有关啦！</p>
+<table class="term"><tbody><tr><td class="term"><pre>-<span class="term_write">*</span>- Kernel support for ELF binaries
+[*] Write ELF core dumps with partial segments
+&lt;*&gt; Kernel support for scripts starting with #!
+&lt;M&gt; Kernel support for MISC binaries
+[*] IA32 Emulation
+&lt;<span class="term_write">M</span>&gt;   IA32 a.out support
+[*]   x32 ABI for 64-bit mode
+<span class="term_say"># 因为我们的 CentOS 已经是纯 64 比特的环境！所以个人建议这里还是要选择仿真 32 比特的功能！
+# 不然若有些比较旧的软件，恐怕会无法被你的系统所运行喔！</span>
+</pre></td></tr></tbody></table>
+		<a id="networking"></a>
+		<ul class="toplist"><li>核心的网络功能</li></ul>
+		<p>这个『Networking support』项目是相当重要的选项，因为他还包含了防火墙相关的项目！就是未来在服务器篇会谈到的防火墙 
+		iptables 这个数据啊！所以，千万注意了！在这个设置项目当中，很多东西其实我们在基础篇还没有讲到，
+		因为大部分的参数都与网络、防火墙有关！由于防火墙是在启动网络之后再设置即可，所以<span class="text_import2">绝大部分的内容都可以被编译成为模块，而且也建议你编成模块</span>！有用到再加载到核心即可啊！</p>
+<table class="term"><tbody><tr><td class="term"><pre>--- Networking support
+      Networking options  ---&gt;
+      <span class="term_say"># 就是这个光啊！里面的数据全部都是重要的防火墙项目！尽量编成模块啰！
+      # 至于不晓得功能的部分，就尽量保留默认值即可！
+      # 底下的数据中，鸟哥只有列出原本没有选择，后来建议选择的部份</span>
+      [<span class="term_write">*</span>] Network packet filtering framework (Netfilter)  ---&gt;
+      <span class="term_say"># 这个就是我们一直讲的防火墙部分！里面细项几乎全选择成为模块！</span>
+          --- Network packet filtering framework (Netfilter)
+                Core Netfilter Configuration  ---&gt;
+                &lt;<span class="term_write">M</span>&gt; Transparent proxying support
+<span class="term_say">================================================================================</span>
+      [<span class="term_write">*</span>] QoS and/or fair queueing  ---&gt; <span class="term_note">&lt;==内容同样全为模块！</span>
+          Network testing  ---&gt; <span class="term_note">&lt;==保留成模块默认值</span>
+<span class="term_say">================================================================================</span>
+<span class="term_say"># 底下的则是一些特殊的网络设备，例如红外线啊、蓝牙啊！
+# 如果不清楚的话，就使用模块吧！除非你真的知道不要该项目！</span>
+&lt;<span class="term_write">M</span>&gt;   Bluetooth subsystem support  ---&gt;
+      <span class="term_say"># 这个是蓝牙支持，同样的，里面除了必选之外，其他通通挑选成为模块！</span>
+[<span class="term_write">*</span>]   Wireless  ---&gt;
+      <span class="term_say"># 这个则是无线网络设备，里面保留默认值，但可编成模块的就选模块</span>
+&lt;<span class="term_write">M</span>&gt;   WiMAX Wireless Broadband support  ---&gt;
+      <span class="term_say"># 新一代的无线网络，也请勾选成为模块！</span>
+&lt;<span class="term_write">M</span>&gt;  NFC subsystem support  ---&gt;
+      <span class="term_say"># 跟卡片比较有关的芯片支持，建议编译成模块，内部数据也是编译成模块为佳！</span>
+</pre></td></tr></tbody></table>
+		<a id="device"></a>
+		<ul class="toplist"><li>各项设备的驱动程序</li></ul>
+		<p>进入『Device Drivers』这个是所有硬件设备的驱动程序库！哇！光是看到里面这么多内容，鸟哥头都昏了～
+		不过，为了你自己的主机好，建议你还是得要一个项目一个项目的去挑选挑选才行～
+		这里面的数据就与你主机的硬件有绝对的关系了！</p>
+		<p>在这里面真的很重要，因为很多数据都与你的硬件有关。核心推出时的默认值是比较符合一般状态的，
+		所以很多数据其实保留默认值就可以编的很不错了！不过，也因为较符合一般状态，
+		所以核心额外的编译进来很多跟你的主机系统不符合的数据，例如网络卡设备～
+		你可以针对你的主板与相关硬件来进行编译。不过，还是要记得有『未来扩充性』的考量！
+		之前鸟哥不是谈过吗，我的网络卡由螃蟹卡换成 3Com 时，核心捉不到～
+		因为...鸟哥并没有将 3Com 的网络卡编译成为模块啊！ @_@</p>
+<table class="term"><tbody><tr><td class="term"><pre><span class="term_say"># 大部分都保留默认值，鸟哥只是就比较重要的部份拿出来做说明而已！</span>
+    &lt;M&gt; Serial ATA and Parallel ATA drivers  ---&gt;  <span class="term_note"># 就是 SATA/IDE 磁盘！大多数选择为模块！</span>
+    [*] Multiple devices driver support (RAID and LVM)  ---&gt; <span class="term_note"># 就是 LVM 与 RAID ！要选要选！</span>
+    -*- Network device support  ---&gt; <span class="term_note"># 网络方面的设备，网卡与相关媒体啦！</span>
+        -*-   Network core driver support
+        &lt;M&gt;     Bonding driver support             <span class="term_note"># 与网卡集成有关的项目！要选！</span>
+        &lt;M&gt;     Ethernet team driver support  ---&gt; <span class="term_note"># 与 bonding 差不多的功能！要选！</span>
+        &lt;M&gt;     Virtio network driver              <span class="term_note"># 虚拟化的网卡驱动程序！要选！</span>
+        -*-   Ethernet driver support  ---&gt;        <span class="term_note"># 以太网卡！里面的一堆 10G 卡要选！</span>
+              &lt;M&gt;     Chelsio 10Gb Ethernet support
+              &lt;M&gt;     Intel(R) PRO/10GbE support
+        &lt;M&gt;   PPP (point-to-point protocol) support<span class="term_note"># 与拨接有关的协定！</span>
+              USB Network Adapters  ---&gt;           <span class="term_note"># 当然全部编译为模块！</span>
+        [*]   Wireless LAN  ---&gt;                   <span class="term_note"># 无线网卡也相当重要！里面全部变成模块！</span>
+<span class="term_say">================================================================================</span>
+    [ ] GPIO Support  ---&gt;           <span class="term_note"># 若有需要使用类似树莓派、香蕉派才需要这东西！</span>
+    &lt;M&gt; Multimedia support  ---&gt;     <span class="term_note"># 多媒体设备，如影像截取、广播声卡等等</span>
+        Graphics support  ---&gt;       <span class="term_note"># 显卡！如果是作为桌面型使用，这里就重要了！</span>
+    &lt;M&gt; Sound card support  ---&gt;     <span class="term_note"># 声卡，同样的，台式机使用时，比较重要！</span>
+    [*] USB support  ---&gt;            <span class="term_note"># 就是 USB！底下几个内部的细项要注意是勾选的！</span>
+        &lt;*&gt;     xHCI HCD (USB 3.0) support
+        &lt;*&gt;     EHCI HCD (USB 2.0) support
+        &lt;*&gt;     OHCI HCD support
+        &lt;*&gt;     UHCI HCD (most Intel and VIA) support
+    &lt;M&gt; InfiniBand support  ---&gt;     <span class="term_note"># 较高端的网络设备，速度通常达到 40Gb 以上！</span>
+    &lt;M&gt; VFIO Non-Privileged userspace driver framework  ---&gt; <span class="term_note"># 作为 VGA passthrought 用！</span>
+        [*]     VFIO PCI support for VGA devices
+    [*] Virtualization drivers  ---&gt; <span class="term_note"># 虚拟化的驱动程序！</span>
+        Virtio drivers  ---&gt;         <span class="term_note"># 在虚拟机里面很重要的驱动程序项目！</span>
+    [*] IOMMU Hardware Support  ---&gt; <span class="term_note"># 同样的与虚拟化相关性较高！</span>
+</pre></td></tr></tbody></table>
+		<p>至于『 Firmware Drivers 』的项目，请视你的需求来选择～基本上就保留设置值即可！所以鸟哥这里就不显示啰！</p>
+		<a id="filesystem"></a>
+		<ul class="toplist"><li>文件系统的支持</li></ul>
+		<p>文件系统的支持也是很重要的一项核心功能！因为如果不支持某个文件系统，那么我们的 Linux kernel 
+		就无法认识，当然也就无法使用啦！例如 Quota, NTFS 等等特殊的 filesystem 。
+		这部份也是有够麻烦～因为涉及核心是否能够支持某些文件系统，以及某些操作系统支持的
+		partition table 项目。在进行选择时，也务必要特别的小心在意喔！
+		尤其是我们常常用到的网络操作系统 (NFS/Samba 等等)，以及基础篇谈到的 Quota 等，
+		你都得要勾选啊！否则是无法被支持的。如果你有兴趣，也可以将 NTFS 的文件系统设置为可读写看看啰！</p>
+<table class="term"><tbody><tr><td class="term"><pre><span class="term_say"># 底下仅有列出比较重要及与默认值不同的项目而已喔！所以项目少很多！</span>
+    &lt;M&gt; Second extended fs support           <span class="term_note"># 缺省已经不支持 ext2/ext3，这里我们将他加回来！</span>
+    &lt;M&gt; Ext3 journalling file system support
+    [*]   Default to 'data=ordered' in ext3 (NEW)
+    [*]   Ext3 extended attributes (NEW)
+    [*]     Ext3 POSIX Access Control Lists
+    &lt;M&gt; The Extended 4 (ext4) filesystem     <span class="term_note"># 一定要有的支持</span>
+    &lt;M&gt; Reiserfs support
+    &lt;M&gt; XFS filesystem support               <span class="term_note"># 一定要有的支持！</span>
+    [*]   XFS Quota support
+    [*]   XFS POSIX ACL support
+    [*]   XFS Realtime subvolume support     <span class="term_note"># 增加这一项好了！</span>
+    &lt;M&gt; Btrfs filesystem support             <span class="term_note"># 最好有支持！</span>
+    [*] Quota support
+    &lt;*&gt; Quota format vfsv0 and vfsv1 support
+    &lt;*&gt; Kernel automounter version 4 support (also supports v3)
+    &lt;M&gt; FUSE (Filesystem in Userspace) support
+        DOS/FAT/NT Filesystems  ---&gt;
+        &lt;M&gt; MSDOS fs support
+        &lt;M&gt; VFAT (Windows-95) fs support
+        (950) Default codepage for FAT       <span class="term_note"># 要改成这样喔！中文支持！</span>
+        (utf8) Default iocharset for FAT     <span class="term_note"># 要改成这样喔！中文支持！</span>
+        &lt;M&gt; NTFS file system support         <span class="term_note"># 建议加上 NTFS 喔！</span>
+        [*]   NTFS write support             <span class="term_note"># 让他可读写好了！</span>
+        Pseudo filesystems  ---&gt;             <span class="term_note"># 类似 /proc ，保留默认值</span>
+    -*- Miscellaneous filesystems  ---&gt;      <span class="term_note"># 其他文件系统的支持，保留默认值</span>
+    [*] Network File Systems  ---&gt;           <span class="term_note"># 网络文件系统！很重要！也要挑挑！</span>
+        &lt;M&gt;   NFS client support
+        &lt;M&gt;   NFS server support
+        [*]     NFS server support for NFS version 4
+        &lt;M&gt;   CIFS support (advanced network filesystem, SMBFS successor)
+        [*]       Extended statistics
+        [*]   Provide CIFS client caching support
+    -*- Native language support  ---&gt;        <span class="term_note"># 选择缺省的语系</span>
+        (utf8) Default NLS Option
+        &lt;M&gt;   Traditional Chinese charset (Big5)
+</pre></td></tr></tbody></table>
+		<a id="security"></a>
+		<ul class="toplist"><li>核心骇客、信息安全、密码应用</li></ul>
+		<p>再接下来有个『Kernel hacking』的项目，那是与核心开发者比较有关的部分，这部分建议保留默认值即可，
+		应该不需要去修改他！除非你想要进行核心方面的研究喔。然后底下有个『 Security Options 』，那是属于信息安全方面的设置，
+		包括 SELinux 这个细部权限强化模块也在这里编入核心的！这个部份只要记得 SELinux 作为默认值，且务必要将 NSA SELinux 编进核心即可，
+		其他的细部请保留默认值。</p>
+		<p>另外还有『 Cryptographic API 』这个密码应用程序接口工具选项，以前的缺省加密机制为 MD5，近年来则改用了 SHA 这种机制。
+		不过，反正缺省已经将所有的加密机制编译进来了，所以也是可以保留默认值啦！都不需要额外修改就是了！</p>
+		<a id="virt"></a>
+		<ul class="toplist"><li>虚拟化与函数库</li></ul>
+		<p>虚拟化是近年来非常热门的一个议题，因为电脑的能力太强，所以时常闲置在那边，
+		此时，我们可以透过虚拟化技术在一部主机上面同时启动多个操作系统来运作，这就是所谓的虚拟化。
+		Linux 核心已经主动的纳入虚拟化功能喔！而 Linux 认可的虚拟化使用的机制为 KVM (Kernel base Virtual Machine)。
+		至于常用的核心函数库也可以全部编为模块啰！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[<span class="term_write">*</span>] Virtualization  ---&gt;
+    --- Virtualization
+    &lt;M&gt;   Kernel-based Virtual Machine (KVM) support
+    &lt;M&gt;     KVM for Intel processors support
+    &lt;M&gt;     KVM for AMD processors support
+    [*]     Audit KVM MMU
+    [*]     KVM legacy PCI device assignment support   <span class="term_note"># 虽然已经有 VFIO，不过建议还是选起来！</span>
+    &lt;M&gt;   Host kernel accelerator for virtio net
+<span class="term_say">================================================================================</span>
+Library routines  ---&gt;
+    <span class="term_say"># 这部份全部保留默认值即可！</span>
+</pre></td></tr></tbody></table>
+		<p>现在请回到如<a href="0540kernel.html#fig24.2.1">图24.2.1</a> 的画面中，在下方设置处移动到『Save』的选项，点击该项目，
+		在出现的窗口中确认文件名为 .config 之后，直接按下『OK』按钮，这样就将刚刚处理完毕的选项给记录下来了。
+		接下来可以选择离开菜单画面，准备让我们来进行编译的行为啰。</p>
+		<p>要请你注意的是，上面的数据主要是适用在鸟哥的个人机器上面的，
+		目前鸟哥比较习惯使用原本 distributions 提供的缺省核心，因为他们也会主动的进行更新，
+		所以鸟哥就懒的自己重编核心了～ ^_^</p>
+		<p>此外，因为鸟哥重视的地方在于『网络服务器与虚拟化服务器』上面，所以里头的设置少掉了相当多的个人桌面型
+		Linux 的硬件编译！所以，如果你想要编译出一个适合你的机器的核心，
+		那么可能还有相当多的地方需要来修正的！不论如何，请随时以
+		Help 那个选项来看一看内容吧！反正 Kernel 重编的机率不大！花多一点时间重新编译一次！
+		然后将该编译完成的参数文件保存下来，未来就可以直接将该文件叫出来读入了！
+		所以花多一点时间安装一次就好！那也是相当值得的！</p>
+	<br></div>
+</div>
+<a id="make"></a>
+<div class="block1">
+<h2>24.3 核心的编译与安装</h2>
+	<p>将最复杂的核心功能选择完毕后，接下来就是进行这些核心、核心模块的编译了！而编译完成后，当然就是需要使用噜～
+	那如何使用新核心呢？就得要考虑 grub 这个玩意儿啦！底下我们就来处理处理：</p>
+	<a id="make_kernel"></a>
+	<div class="block2"><div class="gototop"><a href="0540kernel.html#top">Top</a></div>
+	<h2>24.3.1 编译核心与核心模块</h2>
+		<p>核心与核心模块需要先编译起来，而编译的过程其实非常简单，你可以先使用『 make help 』去查阅一下所有可用编译参数，
+		就会知道有底下这些基本功能：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study linux-3.10.89]# <span class="term_command">make vmlinux</span>  <span class="term_note">&lt;==未经压缩的核心</span>
+[root@study linux-3.10.89]# <span class="term_command">make modules</span>  <span class="term_note">&lt;==仅核心模块</span>
+[root@study linux-3.10.89]# <span class="term_command">make bzImage</span>  <span class="term_note">&lt;==经压缩过的核心(缺省)</span>
+[root@study linux-3.10.89]# <span class="term_command">make all    </span>  <span class="term_note">&lt;==进行上述的三个动作</span>
+</pre></td></tr></tbody></table>
+		<p>我们常见的在 /boot/ 底下的核心文件，都是经过压缩过的核心文件，因此，上述的动作中比较常用的是 modules 与
+		bzImage 这两个，其中 bzImage 第三个字母是英文大写的 I 喔！bzImage 可以制作出压缩过后的核心，
+		也就是一般我们拿来进行系统开机的信息啰！所以，基本上我们会进行的动作是：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study linux-3.10.89]# <span class="term_command">make -j 4 clean  </span>  <span class="term_note">&lt;==先清除暂存盘</span>
+[root@study linux-3.10.89]# <span class="term_command">make -j 4 bzImage</span>  <span class="term_note">&lt;==先编译核心</span>
+[root@study linux-3.10.89]# <span class="term_command">make -j 4 modules</span>  <span class="term_note">&lt;==再编译模块</span>
+[root@study linux-3.10.89]# <span class="term_command">make -j 4 clean bzImage modules</span>  <span class="term_note">&lt;==连续动作！</span>
+</pre></td></tr></tbody></table>
+		<p>上述的动作会花费非常长的时间，编译的动作依据你选择的项目以及你主机硬件的性能而不同。此外，为啥要加上 -j 4 呢？
+		因为鸟哥的系统上面有四个 CPU 核心，这几个核心可以同时进行编译的行为，这样在编译时速度会比较快！如果你的 CPU 核心数 (包括超线程) 有多个，
+		那这个地方请加上你的可用 CPU 数量吧！</p>
+		<p>最后制作出来的数据是被放置在 /usr/src/kernels/linux-3.10.89/ 
+		这个目录下，还没有被放到系统的相关路径中喔！在上面的编译过程当中，如果有发生任何错误的话，
+		很可能是由于核心项目的挑选选择的不好，可能你需要重新以 make menuconfig 再次的检查一下你的相关设置喔！
+		如果还是无法成功的话，那么或许将原本的核心数据内的 .config 文件，复制到你的核心源文件目录下，
+		然后据以修改，应该就可以顺利的编译出你的核心了。最后注意到，下达了 make bzImage 后，最终的结果应该会像这样：</p>
+<table class="term"><tbody><tr><td class="term"><pre>Setup is 16752 bytes (padded to 16896 bytes).
+System is 4404 kB
+CRC 30310acf
+Kernel: <span class="term_write">arch/x86/boot/bzImage</span> is ready  (#1)
+[root@study linux-3.10.89]# <span class="term_command">ll arch/x86/boot/bzImage</span>
+-rw-r--r--. 1 root root 4526464 Oct 20 09:09 arch/x86/boot/bzImage
+</pre></td></tr></tbody></table>
+		<p>可以发现你的核心已经编译好而且放置在 /usr/src/kernels/linux-3.10.89/arch/x86/boot/bzImage
+		里面啰～那个就是我们的核心文件！最重要就是他啦！我们等一下就会安装到这个文件哩！
+		然后就是编译模块的部分啰～ make modules 进行完毕后，就等着安装啦！ ^_^</p>
+	<br></div><br>
+	<a id="make_module"></a>
+	<div class="block2"><div class="gototop"><a href="0540kernel.html#top">Top</a></div>
+	<h2>24.3.2 实际安装模块</h2>
+		<p>安装模块前有个地方得要特别强调喔！我们知道模块是放置到 /lib/modules/$(uname -r) 目录下的，那如果<span class="text_import2">同一个版本的模块被反复编译后来安装时，会不会产生冲突</span>呢？举例来说，鸟哥这个 3.10.89
+		的版本第一次编译完成且安装妥当后，发现有个小细节想要重新处理，因此又重新编译过一次，那两个版本一模一样时，
+		模块放置的目录会一样，此时就会产生冲突了！如何是好？有两个解决方法啦：</p>
+		<ul>
+		<li>先将旧的模块目录更名，然后才安装核心模块到目标目录去；</li>
+		<li>在 make menuconfig 时，那个 <a href="0540kernel.html#general">General setup</a> 内的 Local version 修改成新的名称。</li>
+		</ul>
+		<p>鸟哥建议使用第二个方式，因为如此一来，你的模块放置的目录名称就不会相同，这样也就能略过上述的目录同名问题啰！
+		好，那么如何安装模块到正确的目标目录呢？很简单，同样使用 make 的功能即可：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study linux-3.10.89]# <span class="term_command">make modules_install</span>
+[root@study linux-3.10.89]# <span class="term_command">ll /lib/modules/</span>
+drwxr-xr-x. 7 root root 4096 Sep  9 01:14 3.10.0-229.11.1.el7.x86_64
+drwxr-xr-x. 7 root root 4096 May  4 17:56 3.10.0-229.el7.x86_64
+drwxr-xr-x. 3 root root 4096 Oct 20 14:29 <span class="term_write">3.10.89vbird</span>  <span class="term_note"># 这就是刚刚装好的核心模块！</span>
+</pre></td></tr></tbody></table>
+		<p>看到否，最终会在 /lib/modules 底下创建起你这个核心的相关模块喔！不错吧！模块这样就已经处理妥当啰～
+		接下来，就是准备要进行核心的安装了！哈哈！又跟 grub2 有关啰～</p>
+	<br></div><br>
+	<a id="make_install"></a>
+	<div class="block2"><div class="gototop"><a href="0540kernel.html#top">Top</a></div>
+	<h2>24.3.3 开始安装新核心与多重核心菜单 (grub)</h2>
+		<p>现在我们知道核心文件放置在 /usr/src/kernels/linux-3.10.89/arch/x86/boot/bzImage 
+		，但是其实系统核心理论上都是摆在 /boot  底下，且为 vmlinuz 开头的文件名。
+		此外，我们也晓得一部主机是可以做成多重开机系统的！这样说，应该知道鸟哥想要干嘛了吧？
+		对啦！我们将同时保留旧版的核心，并且添加新版的核心在我们的主机上面。</p>
+		<p>此外，与 grub1 不一样， grub2 建议我们不要直接修改设置档，而是透过让系统自动侦测来处理 grub.cfg 这个设置档的内容。
+		所以，在处理核心文件时，可能就得要知道核心文件的命名规则比较好耶！</p>
+		<ul class="toplist"><li>移动核心到 /boot 且保留旧核心文件</li></ul>
+		<p>保留旧核心有什么好处呢？最大的好处是可以确保系统能够顺利开机啦！因为核心虽然被编译成功了，
+		但是并不保证我们刚刚挑选的核心项目完全适合于目前这部主机系统，
+		可能有某些地方我们忘记选择了，这将导致新核心无法顺利驱动整个主机系统，更差的情况是，
+		你的主机无法成功开机成功！此时，如果我们保留旧的核心，呵呵！若新核心测试不通过，就用旧核心来启动啊！嘿嘿！
+		保证比较不会有问题嘛！另外，核心文件通常以 vmlinuz 为开头，接上核心版本为依据的文件名格式，因此可以这样做看看：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study linux-3.10.89]# <span class="term_command">cp arch/x86/boot/bzImage /boot/vmlinuz-3.10.89vbird</span>  <span class="term_note">&lt;==实际核心</span>
+[root@study linux-3.10.89]# <span class="term_command">cp .config /boot/config-3.10.89vbird</span>   <span class="term_note">&lt;==建议设置档也复制备份</span>
+[root@study linux-3.10.89]# <span class="term_command">chmod a+x /boot/vmlinuz-3.10.89vbird</span>
+[root@study linux-3.10.89]# <span class="term_command">cp System.map /boot/System.map-3.10.89vbird</span>
+[root@study linux-3.10.89]# <span class="term_command">gzip -c Module.symvers &gt; /boot/symvers-3.10.89vbird.gz</span>
+[root@study linux-3.10.89]# <span class="term_command">restorecon -Rv /boot</span>
+</pre></td></tr></tbody></table>
+		<ul class="toplist"><li>创建相对应的 Initial Ram Disk (initrd)</li></ul>
+		<p>还记得<a href="0510osloader.html#grub_initrd">第十九章谈过的 initramfs</a> 这个玩意儿吧！
+		由于鸟哥的系统使用 SATA 磁盘，加上刚刚 SATA 磁盘支持的功能并没有直接编译到核心去，所以当然要使用 initramfs 来加载才行！
+		使用如下的方法来创建 initramfs 吧！记得搭配正确的核心版本喔！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">dracut -v /boot/initramfs-3.10.89vbird.img 3.10.89vbird</span>
+</pre></td></tr></tbody></table>
+		<ul class="toplist"><li>编辑开机菜单 (grub)</li></ul>
+		<p>前面的文件大致上都摆放妥当之后，同时得要依据你的核心版本来处理文件名喔！接下来就直接使用 grub2-mkconfig 
+		来处理你的 grub2 开机菜单设置即可！让我们来处理处理先！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">grub2-mkconfig -o /boot/grub2/grub.cfg</span>
+Generating grub configuration file ...
+Found linux image: /boot/vmlinuz-3.10.89vbird     <span class="term_note"># 应该要最早出现！</span>
+Found initrd image: /boot/initramfs-3.10.89vbird.img
+<span class="term_say">.....(底下省略).....</span>
+</pre></td></tr></tbody></table>
+		<p>因为缺省较新版本的核心会放在最前面成为缺省的开机菜单项目，所以你得要确认上述的结果中，第一个被发现的核心为你刚刚编译好的核心文件才对喔！
+		否则等一下开机可能就会出现使用旧核心开机的问题。现在让我们重新开机来测试看看啰！</p>
+		<ul class="toplist"><li>重新以新核心开机、测试、修改</li></ul>
+		<p>如果上述的动作都成功后，接下来就是重新开机并选择新核心来启动系统啦！如果系统顺利启动之后，你使用 uname -a
+		会出现类似底下的数据：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">uname -a</span>
+Linux study.centos.vbird <span class="term_write">3.10.89vbird</span> #1 SMP Tue Oct 20 09:09:11 CST 2015 <span class="term_write">x86_64 
+x86_64 x86_64</span> GNU/Linux
+</pre></td></tr></tbody></table>
+		<p>包括核心版本与支持的硬件平台都是 OK 的！嘿嘿！那你所编译的核心就是差不多成功的啦！
+		如果运作一阵子后，你的系统还是稳定的情况下，那就能够将 default 值使用这个新的核心来作为缺省开机啰！
+		这就是核心编译！那你也可以自己处理嵌入式系统的核心编译啰！ ^_^</p>
+	<br></div>
+</div>
+<a id="module"></a>
+<div class="block1">
+<h2>24.4 额外(单一)核心模块编译</h2>
+	<p>我们现在知道核心所支持的功能当中，有直接编译到核心内部的，也有使用插件模块的，插件模块可以简单的想成<span class="text_import2">就是驱动程序</span> 啦！那么也知道这些核心模块依据不同的版本，被分别放置到 
+	/lib/modules/$(uname -r)/kernel/ 目录中，各个硬件的驱动程序则是放置到 /lib/modules/$(uname -r)/kernel/drivers/ 
+	当中！换个角度再来思考一下，如果刚刚我自己编译的数据中，有些驱动程序忘记编译成为模块了，那是否需要重新进行上述的所有动作？
+	又如果我想要使用硬件厂商发布的新驱动程序，那该如何是好？</p>
+	<a id="module_before"></a>
+	<div class="block2"><div class="gototop"><a href="0540kernel.html#top">Top</a></div>
+	<h2>24.4.1 编译前注意事项</h2>
+		<p>由于我们的核心原本就有提供很多的核心工具给硬件开发商来使用，
+		而硬件开发商也需要针对核心所提供的功能来设计他们的驱动程序模块，因此，
+		我们如果想要自行使用硬件开发商所提供的模块来进行编译时，就需要使用到核心所提供的源文件当中，
+		所谓的头文件 (header include file) 来取得驱动模块所需要的一些函数库或标头的定义啦！
+		也因此我们常常会发现到，如果想要自行编译核心模块时，就得要拥有核心原代码嘛！</p>
+		<p>那核心原代码我们知道他是可能放置在 /usr/src/ 底下，早期的核心原代码被要求一定要放置到 /usr/src/linux/
+		目录下，不过，如果你有多个核心在一个 Linux 系统当中，而且使用的原代码并不相同时，
+		呵呵～问题可就大了！所以，在 2.6 版以后，核心使用比较有趣的方法来设计他的原代码放置目录，
+		那就是以 /lib/modules/$(uname -r)/build 及 /lib/modules/$(uname -r)/source
+		这两个链接档来指向正确的核心原代码放置目录。如果以我们刚刚由 kernel 3.10.89vbird 创建的核心模块来说，
+		那么他的核心模块目录底下有什么咚咚？</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">ll -h /lib/modules/3.10.89vbird/</span>
+lrwxrwxrwx.  1 root root   30 Oct 20 14:27 build -&gt; /usr/src/kernels/linux-3.10.89
+drwxr-xr-x. 11 root root 4.0K Oct 20 14:29 kernel
+-rw-r--r--.  1 root root 668K Oct 20 14:29 modules.alias
+-rw-r--r--.  1 root root 649K Oct 20 14:29 modules.alias.bin
+-rw-r--r--.  1 root root 5.8K Oct 20 14:27 modules.builtin
+-rw-r--r--.  1 root root 7.5K Oct 20 14:29 modules.builtin.bin
+-rw-r--r--.  1 root root 208K Oct 20 14:29 modules.dep
+-rw-r--r--.  1 root root 301K Oct 20 14:29 modules.dep.bin
+-rw-r--r--.  1 root root  316 Oct 20 14:29 modules.devname
+-rw-r--r--.  1 root root  81K Oct 20 14:27 modules.order
+-rw-r--r--.  1 root root  131 Oct 20 14:29 modules.softdep
+-rw-r--r--.  1 root root 269K Oct 20 14:29 modules.symbols
+-rw-r--r--.  1 root root 339K Oct 20 14:29 modules.symbols.bin
+lrwxrwxrwx.  1 root root   30 Oct 20 14:27 source -&gt; /usr/src/kernels/linux-3.10.89
+</pre></td></tr></tbody></table>
+		<p>比较有趣的除了那两个链接档之外，还有那个 modules.dep 文件也挺有趣的，
+		那个文件是记录了核心模块的相依属性的地方，依据该文件，我们可以简单的使用
+		modprobe 这个指令来加载模块呢！至于核心原代码提供的标头档，在上面的案例当中，
+		则是放置到 /usr/src/kernels/linux-3.10.89/include/ 目录中，当然就是借由 build/source
+		这两个链接文件来取得目录所在的啦！^_^</p>
+		<p>由于核心模块的编译其实与核心原本的原代码有点关系的，因此如果你需要重新编译模块时，
+		那除了 make, gcc 等主要的编译软件工具外，<span class="text_import2">你还需要的就是 kernel-devel 
+		这个软件</span>！记得一定要安装喔！而如果你想要在缺省的核心底下添加模块的话，那么就得要找到 kernel 的 SRPM 文件了！
+		将该文件给他安装，并且取得 source code 后，才能够顺利的编译喔！</p>
+	<br></div><br>
+	<a id="module_compile"></a>
+	<div class="block2"><div class="gototop"><a href="0540kernel.html#top">Top</a></div>
+	<h2>24.4.2 单一模块编译</h2>
+		<p>想像两个情况：</p>
+		<ul>
+		<li>如果我的缺省核心忘记加入某个功能，而且该功能可以编译成为模块，不过，
+		缺省核心却也没有将该项功能编译成为模块，害我不能使用时，该如何是好？<br><br></li>
+		<li>如果 Linux 核心原代码并没有某个硬件的驱动程序 (module) ，但是开发该硬件的厂商有提供给
+		Linux 使用的驱动程序原代码，那么我又该如何将该项功能编进核心模块呢？</li>
+		</ul>
+		<p>很有趣对吧！不过，在这样的情况下其实没有什么好说的，反正就是
+		『去取得原代码后，重新编译成为系统可以加载的模块』啊！很简单，对吧！^_^！
+		但是，上面那两种情况的模块编译行为是不太一样的，不过，都是需要 make, 
+		gcc 以及核心所提供的 include 标头档与函数库等等。</p>
+		<ul class="toplist"><li>硬件开发商提供的额外模块</li></ul>
+		<p>很多时候，可能由于核心缺省的核心驱动模块所提供的功能你不满意，或者是硬件开发商所提供的核心模块具有更强大的功能，
+		又或者该硬件是新的，所以缺省的核心并没有该硬件的驱动模块时，那你只好自行由硬件开发商处取得驱动模块，然后自行编译啰！</p>
+		<p>如果你的硬件开发商有提供驱动程序的话，那么真的很好解决，直接下载该原代码，重新编译，
+		将他放置到核心模块该放置的地方后就能够使用了！举个例子来说，鸟哥在 2014 年底帮厂商制作一个服务器的环境时，
+		发现对方喜欢使用的磁盘数组卡 (RAID) 当时并没有被 Linux 核心所支持，所以就得要帮厂商针对该磁盘数组卡来编译成为模块啰！
+		处理的方式，当然就是使用磁盘数组卡官网提供的驱动程序来编译啰！</p>
+		<ul><li>Highpoint 的 RocketRAID RR640L 驱动程序：<br><a href="http://www.highpoint-tech.com/USA_new/series_rr600-download.htm" target="_blank">http://www.highpoint-tech.com/USA_new/series_rr600-download.htm</a></li>
+		</ul>
+		<p>虽然你可以选择『RHEL/CentOS 7 x86_64』这个已编译的版本来处理，不过因为我们的核心已经做成自订的版本，
+		变成 3.10.89vbird 这样，忘记加上 x86_64 的版本名，会导致该版本的自动安装脚本失败！所以，算了！我们自己来重新编译吧！
+		因此，请下载『Open Source Driver』的版本喔！同时，鸟哥假设你将下载的文件放置到 /root/raidcard 目录内喔！</p>
+<table class="term"><tbody><tr><td class="term"><pre><span class="term_hd"># 1. 将文件解压缩并且开始编译：</span>
+[root@study ~]# <span class="term_command">cd /root/raidcard</span>
+[root@study raidcard]# <span class="term_command">ll</span>
+-rw-r--r--. 1 root root 501477 Apr 23 07:42 RR64xl_Linux_Src_v1.3.9_15_03_07.tar.gz
+[root@study raidcard]# <span class="term_command">tar -zxvf RR64xl_Linux_Src_v1.3.9_15_03_07.tar.gz</span>
+[root@study raidcard]# <span class="term_command">cd rr64xl-linux-src-v1.3.9/product/rr64xl/linux/</span>
+[root@study linux]# <span class="term_command">ll</span>
+-rw-r--r--. 1 dmtsai dmtsai 1043 Mar  7  2015 config.c
+-rwxr-xr-x. 1 dmtsai dmtsai  395 Dec 27  2013 Makefile      <span class="term_note"># 要有这家伙存在才行！</span>
+[root@study linux]# <span class="term_command">make</span>
+make[1]: Entering directory `/usr/src/kernels/linux-3.10.89'
+  CC [M]  /root/raidcard/rr64xl-linux-src-v1.3.9/product/rr64xl/linux/.build/os_linux.o
+  CC [M]  /root/raidcard/rr64xl-linux-src-v1.3.9/product/rr64xl/linux/.build/osm_linux.o
+<span class="term_say">.....(中间省略).....</span>
+  LD [M]  /root/raidcard/rr64xl-linux-src-v1.3.9/product/rr64xl/linux/.build/rr640l.ko
+make[1]: Leaving directory `/usr/src/kernels/linux-3.10.89'
+[root@study linux]# <span class="term_command">ll</span>
+-rw-r--r--. 1 dmtsai dmtsai    1043 Mar  7  2015 config.c
+-rwxr-xr-x. 1 dmtsai dmtsai     395 Dec 27  2013 Makefile
+-rw-r--r--. 1 root   root   1399896 Oct 21 00:59 rr640l.ko  <span class="term_note"># 就是产生这家伙！</span>
+<span class="term_hd"># 2. 将模块放置到正确的位置去！</span>
+[root@study linux]# <span class="term_command">cp rr640l.ko /lib/modules/3.10.89vbird/kernel/drivers/scsi/</span>
+[root@study linux]# <span class="term_command">depmod -a</span>   <span class="term_note"># 产生模块相依性文件！</span>
+[root@study linux]# <span class="term_command">grep rr640 /lib/modules/3.10.89vbird/modules.dep</span>
+kernel/drivers/scsi/rr640l.ko:  <span class="term_note"># 确定模块有在相依性的设置档中！</span>
+[root@study linux]# <span class="term_command">modprobe rr640l</span>
+modprobe: ERROR: could not insert 'rr640l': No such device
+<span class="term_say"># 要测试加载一下才行，不过，我们实际上虚拟机没有这张 RAID card，所以出现错误是正常的啦！</span>
+<span class="term_hd"># 3. 若开机过程中就得要加载此模块，则需要将模块放入 initramfs 才行喔！</span>
+[root@study linux]# <span class="term_command">dracut --force -v --add-drivers rr640l \</span>
+&gt; <span class="term_command">/boot/initramfs-3.10.89vbird.img 3.10.89vbird</span>
+[root@study linux]# <span class="term_command">lsinitrd /boot/initramfs-3.10.89vbird.img | grep rr640</span>
+</pre></td></tr></tbody></table>
+		<p>透过这样的动作，我们就可以轻易的将模块编译起来，并且还可以将他直接放置到核心模块目录中，
+		同时以 depmod 将模块创建相关性，未来就能够利用 modprobe 来直接取用啦！
+		但是需要提醒你的是，<span class="text_import2">当自行编译模块时，
+		若你的核心有更新 (例如利用自动更新机制进行在线更新) 时，则你必须要重新编译该模块一次，
+		重复上面的步骤</span>才行！因为这个模块仅针对目前的核心来编译的啊！对吧！</p>
+		<ul class="toplist"><li>利用旧有的核心原代码进行编译</li></ul>
+		<p>如果你后来发现忘记加入某个模块功能了，那该如何是好？其实如果仅是重新编译模块的话，
+		那么整个过程就会变的非常简单！我们先到目前的核心原代码所在目录下达 make menuconfig ，
+		然后将 NTFS 的选项设置成为模块，之后直接下达：</p>
+		<blockquote class="text_import2">make fs/ntfs/</blockquote>
+		<p>那么 ntfs 的模块 (ntfs.ko) 就会自动的被编译出来了！
+		然后将该模块复制到 /lib/modules/3.10.89vbird/kernel/fs/ntsf/ 目录下，
+		再运行 depmod -a ，呵呵～就可以在原来的核心底下添加某个想要加入的模块功能啰～ ^_^</p>
+	<br></div><br>
+	<a id="module_mod"></a>
+	<div class="block2"><div class="gototop"><a href="0540kernel.html#top">Top</a></div>
+	<h2>24.4.3 核心模块管理</h2>
+		<p>核心与核心模块是分不开的，至于驱动程序模块在编译的时候，更与核心的原代码功能分不开～
+		因此，你必须要先了解到：核心、核心模块、驱动程序模块、核心原代码与头文件的相关性，
+		然后才有办法了解到为何编译驱动程序的时候老是需要找到核心的原代码才能够顺利编译！
+		然后也才会知道，为何当核心更新之后，自己之前所编译的核心模块会失效～</p>
+		<p>此外，与核心模块有相关的，还有那个很常被使用的 modprobe 指令，
+		以及开机的时候会读取到的模块定义数据文件 /etc/modprobe.conf ，
+		这些数据你也必须要了解才行～相关的指令说明我们已经在<a href="0510osloader.html">第十九章</a>内谈过了，
+		你应该要自行前往了解喔！ ^_^</p>
+	<br></div>
+</div>
+<a id="mainline"></a>
+<div class="block1">
+<h2>24.5 以最新核心版本编译 CentOS 7.x 的核心</h2>
+	<p>如果你跟鸟哥一样，曾经为了某些缘故需要最新的 4.x.y 的核心版本来实作某些特定的功能时，那该如何是好？没办法，只好使用最新的核心版本来编译啊！
+	你可以依照上面的进程来一个一个处理，没有问题～不过，你也可以根据 ELRepo 网站提供的 SRPM 来重新编译打包喔！
+	当然你可以直接使用 ELRepo 提供的 CentOS 7.x 专属的核心来直接安装。</p>
+	<p>底下我们使用 ELRepo 网站提供的 SRPM 文件来实作核心编译。而要这么重新编译的原因是，鸟哥需要将 VFIO 的 VGA 直接支持的核心功能打开！
+	因此整个进程会变成类似这样：</p>
+	<ol>
+		<li>先从 ELRepo 网站下载不含原代码的 SRPM 文件，并且安装该文件</li>
+		<li>从 www.kernel.org 网站下载满足 ELRepo 网站所需要的核心版本来处理</li>
+		<li>修改核心功能</li>
+		<li>透过 SRPM 的 rpmbuild 重新编译打包核心</li>
+	</ol>
+	<p>就让我们来测试一下啰！(注意，鸟哥使用的是 2015/10/20 当下最新的 4.2.3 这一版的核心。由于核心版本的升级太快，因此在你实作的时间，
+	可能已经有更新的核心版本了。此时你应该要前往 ELRepo 查阅最新的 SRPM 之后，再决定你想使用的版本喔！)</p>
+<table class="term"><tbody><tr><td class="term"><pre><span class="term_hd">1. 先下载 ELRepo 上面的 SRPM 文件！同时安装它：</span>
+[root@study ~]# <span class="term_command">wget http://elrepo.org/linux/kernel/el7/SRPMS/kernel-ml-4.2.3-1.el7.elrepo.nosrc.rpm</span>
+[root@study ~]# <span class="term_command">rpm -ivh kernel-ml-4.2.3-1.el7.elrepo.nosrc.rpm</span>
+<span class="term_hd">2. 根据上述的文件，下载正确的核心原代码：</span>
+[root@study ~]# <span class="term_command">cd rpmbuild/SOURCES</span>
+[root@study SOURCES]# <span class="term_command">wget https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.2.3.tar.xz</span>
+[root@study SOURCES]# <span class="term_command">ll -tr</span>
+<span class="term_say">.....(前面省略).....</span>
+-rw-r--r--. 1 root root 85523884 Oct  3 19:58 linux-4.2.3.tar.xz  <span class="term_note"># 核心原代码</span>
+-rw-rw-r--. 1 root root      294 Oct  3 22:04 cpupower.service
+-rw-rw-r--. 1 root root      150 Oct  3 22:04 cpupower.config
+-rw-rw-r--. 1 root root   162752 Oct  3 22:04 config-4.2.3-x86_64 <span class="term_note"># 主要的核心功能</span>
+<span class="term_hd">3. 修改核心功能设置：</span>
+[root@study SOURCES]# <span class="term_command">vim config-4.2.3-x86_64</span>
+<span class="term_say"># 大约在 5623 行找到底下这一行，并在底下添加一行设置值！</span>
+# CONFIG_VFIO_PCI_VGA is not set
+<span class="term_write">CONFIG_VFIO_PCI_VGA=y</span>
+[root@study SOURCES]# <span class="term_command">cd ../SPECS</span>
+[root@study SPECS]# <span class="term_command">vim kernel-ml-4.2.spec</span>
+<span class="term_say"># 大概在 145 左右找到底下这一行：</span>
+Source0: ftp://ftp.kernel.org/pub/linux/kernel/v4.x/linux-%{LKAver}.tar.xz
+<span class="term_say"># 将它改成如下的模样：</span>
+<span class="term_write">Source0: linux-%{LKAver}.tar.xz</span>
+<span class="term_hd">4. 开始编译并打包：</span>
+[root@study SPECS]# <span class="term_command">rpmbuild -bb kernel-ml-4.2.spec</span>
+<span class="term_say"># 接下来会有很长的一段时间在进行编译行为，鸟哥的机器曾经跑过两个小时左右才编译完！
+# 所以，请耐心等候啊！</span>
+Wrote: /root/rpmbuild/RPMS/x86_64/kernel-ml-4.2.3-1.el7.centos.x86_64.rpm
+Wrote: /root/rpmbuild/RPMS/x86_64/kernel-ml-devel-4.2.3-1.el7.centos.x86_64.rpm
+Wrote: /root/rpmbuild/RPMS/x86_64/kernel-ml-headers-4.2.3-1.el7.centos.x86_64.rpm
+Wrote: /root/rpmbuild/RPMS/x86_64/perf-4.2.3-1.el7.centos.x86_64.rpm
+Wrote: /root/rpmbuild/RPMS/x86_64/python-perf-4.2.3-1.el7.centos.x86_64.rpm
+Wrote: /root/rpmbuild/RPMS/x86_64/kernel-ml-tools-4.2.3-1.el7.centos.x86_64.rpm
+Wrote: /root/rpmbuild/RPMS/x86_64/kernel-ml-tools-libs-4.2.3-1.el7.centos.x86_64.rpm
+Wrote: /root/rpmbuild/RPMS/x86_64/kernel-ml-tools-libs-devel-4.2.3-1.el7.centos.x86_64.rpm
+</pre></td></tr></tbody></table>
+	<p>如上表最后的状态，你会发现竟然已经有 kernel-ml 的软件包产生了！接下来你也不需要像手动安装核心一样，得要一个一个项目移动到正确的位置去，
+	只要使用 yum install 新的核心版本，就会有 4.2.3 版的核心在你的 CentOS 7.x 当中了耶！相当神奇！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">yum install /root/rpmbuild/RPMS/x86_64/kernel-ml-4.2.3-1.el7.centos.x86_64.rpm</span>
+[root@study ~]# <span class="term_command">reboot</span>
+[root@study ~]# <span class="term_command">uname -a</span>
+Linux study.centos.vbird <span class="term_write">4.2.3-1.el7.centos.x86_64</span> #1 SMP Wed Oct 21 02:31:18 CST 2015 <span class="term_write">x86_64 
+x86_64 x86_64</span> GNU/Linux
+</pre></td></tr></tbody></table>
+	<p>这样就让我们的 CentOS 7.x 具有最新的核心啰！与核心官网相同版本咧～够帅气吧！</p>
+</div>
+<a id="hint"></a>
+<div class="block1">
+<h2>24.6 重点回顾</h2>
+<ul class="text_import2">
+	<li>其实核心就是系统上面的一个文件而已，这个文件包含了驱动主机各项硬件的侦测程序与驱动模块；</li>
+	<li>上述的核心模块放置于：/lib/modules/$(uname -r)/kernel/</li>
+	<li>『驱动程序开发』的工作上面来说，应该是属于硬件发展厂商的问题</li>
+	<li>一般的用户，由于系统已经将核心编译的相当的适合一般用户使用了，因此一般入门的用户，基本上，不太需要编译核心</li>
+	<li>编译核心的一般目的：新功能的需求、原本的核心太过臃肿、与硬件搭配的稳定性、其他需求(如嵌入式系统)</li>
+	<li>编译核心前，最好先了解到您主机的硬件，以及主机的用途，才能选择好核心功能；</li>
+	<li>编译前若想要保持核心原代码的干净，可使用 make mrproper 来清除暂存盘与设置档；</li>
+	<li>挑选核心功能与模块可用 make 配合：menuconfig, oldconfig, xconfig, gconfig 等等</li>
+	<li>核心功能挑选完毕后，一般常见的编译过程为：make bzImage, make modules</li>
+	<li>模块编译成功后的安装方式为： make modules_install</li>
+	<li>核心的安装过程中，需要移动 bzImage 文件、创建 initramfs 文件、重建 grub.cfg 等动作；</li>
+	<li>我们可以自行由硬件开发商之官网下载驱动程序来自行编译核心模块！</li>
+</ul>
+</div>
+<a id="ex"></a>
+<div class="block1">
+<h2>24.7 本章习题</h2>
+( 要看答案请将鼠标移动到『答：』底下的空白处，按下左键圈选空白处即可察看)
+<ul>
+	<li>简单说明核心编译的步骤为何？
+	<div class="blockex">
+	<ol>
+		<li>先下载核心原代码，可以从 http://www.kernel.org 或者是 distributions 的 SRPM 来着手；</li>
+		<li>以下以 Tarball 来处理，解开原代码到 /usr/src/kernels 目录下；</li>
+		<li>先进行旧数据删除的动作：『make mrproper』；</li>
+		<li>开始挑选核心功能，可以利用『make menuconfig』、『make oldconfig』、『make gconfig』等等；</li>
+		<li>清除过去的中间暂存盘数据：『make clean』</li>
+		<li>开始核心文件与核心模块的编译：『make bzImage』、『make modules』</li>
+		<li>开始核心模块的安装：『make modules_install』</li>
+		<li>开始核心文件的安装，可以使用的方式有：『make install』或者是透过手动的方式复制核心文件到 /boot/ 当中；</li>
+		<li>创建 initramfs 文件；</li>
+		<li>使用 grub2-mkconfig 修改 /boot/grub2/grub.cfg 文件；</li>
+	</ol>
+	</div></li>
+	<li>如果你利用新编译的核心来操作系统，发现系统并不稳定，你想要移除这个自行编译的核心该如何处理？
+	<div class="blockex">
+	<ol>
+		<li>重新开机，并使用旧的稳定的核心开机！</li>
+		<li>此时才可以将新版核心模块删除： rm -rf /lib/modules/3.10.89vbird</li>
+		<li>删除掉 /boot 里面的新核心： rm /boot/vmlinuz-3.10.89vbird /boot/initramfs-3.10.89vbird.img ...</li> 
+		<li>重建 grub.cfg： grub2-mkconfig -o /boot/grub2/grub.cfg</li>
+	</ol>
+	</div></li>
+</ul>
+</div>
+<a id="reference"></a>
+<div class="block1">
+<h2>24.8 参考数据与延伸阅读</h2>
+<ul>
+	<li><a id="ps1"></a>注1：透过在 /usr/src/kernels/linux-3.10.89 底下的 README 以及『 make 
+		help 』可以得到相当多的解释</li>
+	<li>核心编译的功能：可以用来测试 CPU 性能喔！因为 compile 非常耗系统资源！</li>
+</ul>
+</div>
+</div>	<!-- mainarea -->
+</div>  
+</body></html>

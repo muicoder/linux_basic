@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	
+	<meta name="Author" content="VBird, 鸟哥">
+	<meta name="Description" content="安装 Linux 或者使用 Linux 之前，先来规划一下主机吧！">
+	<title>鸟哥的 Linux 私房菜 -- 第二章、主机规划与磁盘分割</title>
+	<style type="text/css">
+	</style>
+	<link href="./vbird_files/style_2013.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+<div class="tablearea">
+<div class="mainarea">
+<div class="block1">
+<!-- 本文的档头部分 -->
+<h1>第二章、主机规划与磁盘分割</h1>
+<div style="text-align:right">
+	<span class="text_history">最近更新日期：2015/04/28</span>
+</div>
+<!-- 本文的档头部分 -->
+<div class="abstract">
+	<p>事实上，要安装好一部Linux主机并不是那么简单的事情，你必须要针对distributions的特性、服务器软件的能力、
+	未来的升级需求、硬件扩充性需求等等来考量，还得要知道磁盘分割、文件系统、Linux操作较频繁的目录等等，
+	都得要有一定程度的了解才行，所以，安装Linux并不是那么简单的工作喔！
+	不过，要学习Linux总得要有Linux系统存在吧？所以鸟哥在这里还是得要提前说明如何安装一部Linux练习机。
+	在这一章里面，鸟哥会介绍一下，在开始安装Linux之前，您应该要先思考哪些工作？
+	好让您后续的主机维护轻松愉快啊！此外，要了解这个章节的重要性，您至少需要了解到Linux文件系统的基本概念，
+	这部份初学者是不可能具备的！所以初学者在这个章节里面可能会觉得很多部份都是莫名其妙！没关系！
+	在您完成了后面的相关章节之后，<span style="font-weight: bold">记得要再回来这里看看如何规划主机</span>即可！ ^_^</p>
+</div>
+<!-- 本文的链接区部分 -->
+<div class="links">
+<ul>
+	<li><a href="0130designlinux.html#hardware">2.1 Linux与硬件的搭配</a>
+	<ul>
+		<li><a href="0130designlinux.html#hardware_know">2.1.1 认识电脑的硬件配备</a></li>
+		<li><a href="0130designlinux.html#hardware_select">2.1.2 选择与Linux搭配的主机配备</a>： <a href="0130designlinux.html#hardware_site">硬件支持相关网站</a></li>
+		<li><a href="0130designlinux.html#hardware_no">2.1.3 各硬件设备在Linux中的文件名</a></li>
+		<li><a href="0130designlinux.html#hardware_virtual">2.1.4 使用虚拟机学习</a></li>
+	</ul></li>
+	<li><a href="0130designlinux.html#partition">2.2 磁盘分割</a>
+	<ul>
+		<li><a href="0130designlinux.html#partition_name">2.2.1 磁盘连接的方式与设备文件名的关系</a></li>
+		<li><a href="0130designlinux.html#partition_table">2.2.2 MSDOS(MBR) 与 GPT 磁盘分割表(partition table)</a></li>
+		<li><a href="0130designlinux.html#partition_bios_uefi">2.2.3 开机流程中的 BIOS 与 UEFI 开机检测程序</a></li>
+		<li><a href="0130designlinux.html#partition_install">2.2.4 Linux安装模式下，磁盘分割的选择(极重要)</a><br>
+	</li></ul></li>
+	<li><a href="0130designlinux.html#beforeinstall">2.3 安装Linux前的规划</a>
+	<ul>
+		<li><a href="0130designlinux.html#beforeinstall_distro">2.3.1 选择适当的distribution</a></li>
+		<li><a href="0130designlinux.html#beforeinstall_service">2.3.2 主机的服务规划与硬件的关系</a></li>
+		<li><a href="0130designlinux.html#beforeinstall_partition">2.3.3 主机硬盘的主要规划(partition)</a></li>
+		<li><a href="0130designlinux.html#vbirdcase">2.3.4 鸟哥的两个实际案例</a></li>
+	</ul></li>
+	<li><a href="0130designlinux.html#hint">2.4 重点回顾</a></li>
+	<li><a href="0130designlinux.html#ex">2.5 本章习题</a></li>
+	<li><a href="0130designlinux.html#reference">2.6 参考数据与延伸阅读</a></li>
+</li></ul>
+</div>
+</div>
+<!-- 本文的正式部分 -->
+<a id="hardware"></a>
+<div class="block1">
+<h2>2.1 Linux与硬件的搭配</h2>
+	<p>虽然个人电脑各组件的主要接口是大同小异的，包括前面<a href="0105computers.html">第零章计算机概论</a>讲到的种种接口等，
+	但是由于新的技术来得太快，Linux核心针对新硬件所纳入的驱动程序模块比不上硬件更新的速度，
+	加上硬件厂商针对Linux所推出的驱动程序较慢，因此你在选购新的个人电脑(或服务器)时，
+	应该要选择已经过安装Linux测试的硬件比较好。</p>
+	<p>此外，在安装Linux之前，你最好了解一下你的Linux预计是想达成什么任务，这样在选购硬件时才会知道那个组件是最重要的。
+	举例来说，桌面电脑(Desktop)的用户，应该会用到X Window系统，
+	此时，显卡的优劣与内存的大小可就占有很重大的影响。如果是想要做成文件服务器，
+	那么硬盘或者是其他的保存设备，应该就是您最想要增购的组件啰！所以说，功课还是需要作的啊！</p>
+	<p>鸟哥在这里要不厌其烦的再次的强调，Linux对于电脑各组件/设备的分辨，
+	与大家惯用的Windows系统完全不一样！因为，<span class="text_import2">各个组件或设备在Linux底下都是『一个文件！』</span>
+	这个观念我们在<a href="0110whatislinux.html">第一章Linux是什么</a>里面已经提过，
+	这里我们再次的强调。因此，你在认识各项设备之后，学习Linux的设备文件名之前，
+	务必要先将Windows对于设备名称的概念先拿掉～否则会很难理解喔！<br><br></p>
+	<a id="hardware_know"></a>
+	<div class="block2"><div class="gototop"><a href="0130designlinux.html#top">Top</a></div>
+	<h2>2.1.1 认识电脑的硬件配备</h2>
+		<p>『<span class="text_import2">什么？学Linux还得要玩硬件？</span>』呵呵！没错！
+		这也是为什么鸟哥要将<a href="0105computers.html">计算机概论</a>搬上台面之故！
+		我们这里主要是介绍较为普遍的个人电脑架构来设置Linux服务器，因为比较便宜啦！
+		至于各相关的硬件组件说明已经在<a href="0105computers.html">第零章计概</a>内讲过了，这里不再重复说明。
+		仅将重要的主板与组件的相关性图标如下：</p>
+	<a id="fig2.1.1"></a>
+	<div style="text-align:center; margin: 0 auto 0 auto; "><img src="./vbird_files/computer_coms.png" alt="个人电脑各组件的相关性" title="个人电脑各组件的相关性" style="border: 1px solid black; padding: 10px "></div>
+	<div style="text-align: center;">图2.1.1、个人电脑各组件的相关性<br>(上述图标主要取自tom's硬件指南，各组件图片分属个别公司所有)</div>
+		<p>那么我们应该如何挑选电脑硬件呢？随便买买就好，还是有特殊的考量？底下有些思考角度可以提供给大家参考看看：</p>
+		<ul class="toplist">
+		<li>游戏机/工作机的考量</li></ul>
+		<p>事实上，电脑主机的硬件配备与这部主机未来的功能是很有相关性的！举例来说，家里有小孩，
+		或者自己仍然算是小孩的朋友大概都知道：『<span class="text_import2">要用来打Game的『游戏机电脑』
+		所需要的配备一定比办公室用的『工作机电脑』配备更高档</span>』，为什么呢？
+		因为现在一般的三维(3D)电脑游戏所需要的3D光影运算太多了，所以显卡与CPU资源都会被耗用的非常多！
+		当然就需要比较高级的配备啰，尤其是在显卡、CPU(例如Intel的 I5, I7 系列的) 及主板芯片组方面的功能。</p>
+		<p>至于办公室的工作环境中，最常使用到的软件大多是办公软件(Office)，最常使用的网络功能是浏览器，
+		这些软件所需要的运算并不高，理论上目前的入门级电脑都能够跑得非常顺畅了！
+		甚至很多企业都喜欢购买将显卡、主板芯片组集成在一起的集成型芯片的电脑，因为便宜又好用！</p>
+		<ul class="toplist">
+		<li>『性能/价格』比与『性能/消耗的瓦数』比的考量</li></ul>
+		<p>并不是『贵就比较好』喔！在目前(2015)电费居高不下的情况，如何兼顾省钱与电脑硬件的性能问题，很重要！
+		如果你喜欢购买最新最快的电脑零件，这些刚出炉的组件都非常的贵，而且操作系统还不见得能够完整的支持。
+		所以，鸟哥都比较喜欢购买主流级的产品而非最高档的。因为我们最好能够考虑到性能/价格比。
+		如果高一级的产品让你的花费多一倍，但是添加加的性能却只有10%而已，那这个性能/价格的比值太低，不建议啦！</p>
+		<p>此外，由于电价越来越高，如何『省电』就很重要啦！因此目前硬件评论界有所谓的『每瓦性能』的单位，
+		每瓦电力所发挥的性能越高，当然代表越省电啊！这也是购买硬件时的考量之一啦！要知道，如果是做为服务器用，
+		一年365天中时时刻刻都开机，则你的电脑多花费50瓦的电力时，每年就得要多花450度电左右(50W*365天*24小时/天/1000W=438度电)，如果以企业来讲，
+		每百部电脑每年多花450度电的话，每年得多花十万块以上的电费呢 (以一度电3块钱来计算) ！所以这也需要考量啊！</p>
+		<ul class="toplist">
+		<li>支持度的考量</li></ul>
+		<p>并非所有的产品都会支持特定的操作系统，这牵涉到硬件开发商是否有意愿提供适当的驱动程序之故。
+		因此，当我们想要购买或者是升级某些电脑组件时，应该要特别注意该硬件是否有针对您的操作系统提供适当的驱动程序，
+		否则，买了无法使用，那才是叫人呕死啊！因此，针对Linux来说，底下的硬件分析就重要啦！</p>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		因为鸟哥会自己编译驱动程序，所以上次买家用台式机时，就委托鸟嫂全权处理 (因为钱钱是鸟嫂负责的嘛！嘿嘿！省的麻烦！)！
+		反正最多就是自己去找 driver 来编译，那也没什么～您说是吧？
+		没想到来的主板上面内置的那颗网络卡驱动程序，网卡开发商的官网上面并没有提供 source code！鸟哥赶紧回去查一下该主板的说明，
+		结果...说明书上面明明白白的说，这片主板仅提供支持 windows 的 drivers 而已...还建议不要拿来装 Linux 之用...
+		当下还是默默的去找了一块 PCI-e 网卡来插了...连 source code 都没有，是要编译啥啦！巧妇难为无米之炊啊～～ @_@～～
+		这个故事告诉我们，作人不要太铁齿，硬件该查阅的工作还是要做啦！
+		</fieldset><br>	</div><br>
+	<a id="hardware_select"></a>
+	<div class="block2"><div class="gototop"><a href="0130designlinux.html#top">Top</a></div>
+	<h2>2.1.2 选择与Linux搭配的主机配备</h2>
+		<p>由于硬件的加速发展与操作系统核心功能的增强，导致较早期的电脑已经没有能力再负荷新的操作系统了。
+		举例来说，Pentun-III以前的硬件配备可能已经不再适合现在的新的Linux distribution。
+		<span class="text_import2">而且较早期的硬件配备也可能由于保存的问题或者是电子零件老化的问题，
+		导致这样的电脑系统反而非常容易在运作过程中出现不明的当机情况</span>，因此在利用旧零件拼凑Linux使用的电脑系统时，
+		真的得要特别留意呢！</p>
+		<p>不过由于Linux运作所需要的硬件配备实在不需要太高档，因此，如果有近期汰换下来的五年内的电脑，
+		不必急着丢弃。由于 CPU 为 i3 等级的硬件不算太老旧，在性能方面其实也算的上非常OK了～所以，
+		鸟哥建议您如果有五年内的电脑被淘汰，可以拿下来测试一下，说不定能够作为你日常生活的Linux服务器，
+		或者是备用服务器，都是非常好用的功能哩！</p>
+		<p>但是由于不同的任务的主机所需要的硬件配备并不相同，举例来说，如果你的Linux主机是要作为企业内部的Mail
+		server或者是Proxy server时，或者是需要使用到图形接口的运算(X Window内的Open GL等等功能)，
+		那么你就必须要选择高档一点的电脑配备了，使用过去的电脑零件可能并不适合呢。</p>
+		<p>底下我们稍微谈一下，如果你的Linux主要是作为小型服务器使用，并不负责学术方面的大量运算，
+		而且也没有使用X Window的图形接口，那你的硬件需求只要像底下这样就差不多了：</p>
+		<ul>
+		<li><span class="text_import2">CPU</span><br>
+		CPU只要不是老旧到会让你的硬件系统当机的都能够支持！如同前面谈到的，目前(2015)的环境中，
+		Intel i3 系列的CPU不算太旧而且性能也不错，非常好用了。<br><br></li>
+		<li><span class="text_import2">RAM</span><br>
+		主内存是越大越好！事实上在Linux服务器中，主内存的重要性比CPU还要高的多！因为如果主内存不够大，
+		就会使用到硬盘的内存置换空间(swap)。
+		而由<a href="0105computers.html">计算机概论</a>的内容我们知道硬盘比内存的速度要慢的多，
+		所以主内存太小可能会影响到整体系统的性能的！尤其如果你还想要玩X window的话，那主内存的容量就不能少。
+		对于一般的小型服务器来说，建议至少也要512MB以上的主内存容量较佳。老实说，目前 DDR3 的硬件环境中，
+		新购系统动不动就是 4~16GB 的内存，真的是很够用了！<br><br></li>
+		<li><span class="text_import2">Hard Disk</span><br>
+		由于数据量与数据访问频率的不同，对于硬盘的要求也不相同。
+		举例来说，如果是一般小型服务器，通常重点在于容量，硬盘容量大于20GB就够用到不行了！
+		但如果你的服务器是作为备份或者是小企业的文件服务器，那么你可能就得要考量较高端的磁盘数组(RAID)模式了。<br>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		磁盘数组(RAID)是利用硬件技术将数个硬盘集成成为一个大硬盘的方法，操作系统只会看到最后被集成起来的大硬盘。
+		由于磁盘数组是由多个硬盘组成，所以可以达成速度性能、备份等任务。更多相关的磁盘数组我们会在<a href="0420quota.html">第十四章</a>中介绍的。
+		</fieldset><br></li>
+		<li><span class="text_import2">VGA</span><br>
+		对于不需要X Window的服务器来说，显卡算是最不重要的一个组件了！你只要有显卡能够让电脑启动，那就够了。
+		但如果需要X window系统时，你的显卡最好能够拥有32MB以上的内存容量，否则跑X系统会很累喔！<br><br></li>
+		<li><span class="text_import2">Network Interface Card</span><br>
+		网络卡是服务器上面最重要的组件之一了！目前的主板大多拥有内置10/100/1000Mbps的超高速以太网路卡。
+		但要注意的是，不同的网络卡的功能还是有点差异。举例来说，鸟哥曾经需要具有可以设置 bonding 功能的网络卡，
+		结果，某些较低级的 gigabit 网卡并没有办法提供这个项目的支持！真是伤脑筋！此外，比较好的网卡通常 Linux
+		驱动程序也做的比较好，用起来会比较顺畅。因此，如果你的服务器是 网络 I/O 行为非常频繁的网站，
+		好一点的Intel/boradcom等公司的网卡应该是比较适合的喔。<br><br></li>
+		<li><span class="text_import2">光盘、软碟、键盘与鼠标</span><br>
+		不要旧到你的电脑不支持就好了，因为这些配备都是非必备的喔！举例来说，鸟哥安装好Linux系统后，
+		可能就将该系统的光驱、鼠标、软驱等通通拔除，只有网络线连接在电脑后面而已，其他的都是透过网络连接来管控的哩！
+		因为通常服务器这东西最需要的就是稳定，而稳定的最理想状态就是平时没事不要去动他是最好的。</li>
+		</ul>
+		<p>底下鸟哥针对一般你可能会接触到的电脑主机的用途与相关硬件配备的基本要求来说明一下好了：</p>
+		<ul>
+		<li>一般小型主机且不含X Window系统：<br>
+			<ul>
+			<li>用途：家庭用NAT主机(IP分享器功能)或小型企业之非图形接口小型主机。</li>
+			<li>CPU：五年内出产的产品即可。</li>
+			<li>RAM：至少512MB，不过还是大于1GB以上比较妥当！</li>
+			<li>网络卡：一般的以太网路卡即可应付。</li>
+			<li>显卡：只要能够被Linux捉到的显卡即可，例如NVidia或ATI的主流显卡均可。</li>
+			<li>硬盘：20GB以上即可！</li></ul><br></li>
+		<li><span class="text_import2">桌面型(Desktop)Linux系统/含X Window：</span><br>
+			<ul class="text_import2">
+			<li>用途：Linux的练习机或办公室(Office)工作机。(一般我们会用到的环境)</li>
+			<li>CPU：最好等级高一点，例如 Intel I5, I7 以上等级。</li>
+			<li>RAM：一定要大于1GB比较好！否则容易有图形接口停顿的现象。</li>
+			<li>网络卡：普通的以太网路卡就好了！</li>
+			<li>显卡：使用256MB以上内存的显卡！(入门级的都这个容量以上了)</li>
+			<li>硬盘：越大越好，最好有60GB。</li></ul><br></li>
+		<li>中型以上Linux服务器：<br>
+			<ul>
+			<li>用途：中小型企业/学校单位的FTP/mail/WWW等网络服务主机。</li>
+			<li>CPU：最好等级高一点，例如 I5, I7 以上的多核心系统。</li>
+			<li>RAM：最好能够大于1GB以上，大于4GB更好！</li>
+			<li>网络卡：知名的broadcom或Intel等厂牌，比较稳定性能较佳！</li>
+			<li>显卡：如果有使用到图形功能，则一张64MB内存的显卡是需要的！</li>
+			<li>硬盘：越大越好，如果可能的话，使用磁盘数组，或者网络硬盘等等的系统架构，
+				能够具有更稳定安全的传输环境，更佳！</li>
+			<li><span class="text_import2">建议企业用电脑不要自行组装，可购买商用服务器较佳，</span>
+			因为商用服务器已经通过制造商的散热、稳定度等测试，对于企业来说，会是一个比较好的选择。</li></ul></li>
+		</ul>
+		<p class="text_import2">
+		总之，鸟哥在这里仅是提出一个方向：如果你的Linux主机是小型环境使用的，即时当机也不太会影响到企业环境的运作时，
+		那么使用升级后被淘汰下来的零件以组成电脑系统来运作，那是非常好的回收再利用的案例。
+		但如果你的主机系统是非常重要的，你想要更一部更稳定的Linux服务器，那考虑系统的整体搭配与运作性能的考量，
+		购买已组装测试过的商用服务器会是一个比较好的选择喔！</p>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		一般来说，目前(2015)的入门电脑机种，CPU至少都是Intel i3的2GHz系列的等级以上，
+		主内存至少有2GB，显卡内存也有512MB以上，所以如果您是新购置的电脑，
+		那么该电脑用来作为Linux的练习机，而且加装X Window系统，肯定是可以跑的吓吓叫的啦！^_^
+		</fieldset><br>
+		<p>此外，Linux开发商在发布Linux distribution之前，都会针对该版所缺省可以支持的硬件做说明，
+		因此，你除了可以在Linux的Howto文档去查找硬件的支持度之外，也可以到各个相关的Linux distributions网站去查找呢！
+		底下鸟哥列出几个常用的硬件与Linux distributions搭配的网站，建议大家想要了解你的主机支不支持该版Linux时，
+		务必到相关的网站去搜索一下喔！</p>
+		<a id="hardware_site"></a>
+		<ul>
+		<li>Red Hat的硬件支持：<a href="https://hardware.redhat.com/?pagename=hcl" target="_blank">https://hardware.redhat.com/?pagename=hcl</a></li>
+		<li>Open SuSE的硬件支持：<a href="http://en.opensuse.org/Hardware?LANG=en_UK" target="_blank">http://en.opensuse.org/Hardware?LANG=en_UK</a></li>
+		<li>Linux对笔记型电脑的支持：<a href="http://www.linux-laptop.net/" target="_blank">http://www.linux-laptop.net/</a></li>
+		<li>Linux对打印机的支持：<a href="http://www.openprinting.org/" target="_blank">http://www.openprinting.org/</a></li>
+		<li>Linux硬件支持的中文HowTo：<a href="http://www.linux.org.tw/CLDP/HOWTO/hardware.html#hardware" target="_blank">http://www.linux.org.tw/CLDP/HOWTO/hardware.html#hardware</a></li>
+		</ul>
+		<p>总之，如果是自己维护的一个小网站，考虑到经济因素，你可以自行组装一部主机来架设。
+		而如果是中、大型企业，那么主机的钱不要省～因为，省了这些钱，未来主机挂点时，
+		光是要找出哪个组件出问题，或者是系统过热的问题，会气死人ㄟ！
+		而且，要注意的就是未来你的Linux主机规划的『用途』来决定你的Linux主机硬件配备喔！相当的重要呢！</p>
+	<br></div><br>
+	<a id="hardware_no"></a>
+	<div class="block2"><div class="gototop"><a href="0130designlinux.html#top">Top</a></div>
+	<h2>2.1.3 各硬件设备在Linux中的文件名</h2>
+		<p>选择好你所需要的硬件配备后，接下来得要了解一下各硬件在Linux当中所扮演的角色啰。
+		这里鸟哥再次的强调一下：『<span class="text_import2">在Linux系统中，每个设备都被当成一个文件来对待</span>』
+		举例来说，SATA接口的硬盘的文件名称即为<span class="text_import2">/dev/sd[a-d]</span>，其中，
+		括号内的字母为a-d当中的任意一个，亦即有<span class="text_import2">/dev/sda,
+		/dev/sdb, /dev/sdc, 及 /dev/sdd</span>这四个文件的意思。</p>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		这种中括号 [ ] 型式的表示法在后面的章节当中会使用得很频繁，请特别留意<br><br>
+		另外先提出来强调一下，在Linux这个系统当中，几乎所有的硬件设备文件都在/dev这个目录内，
+		所以你会看到/dev/sda, /dev/sr0等等的文件名喔。
+		</fieldset><br>
+		<p>那么打印机与软碟呢？分别是/dev/lp0, /dev/fd0啰！好了，其他的周边设备呢？
+		底下列出几个常见的设备与其在Linux当中的文件名啰：</p>
+<table class="news" style="width: 600px">
+<tbody><tr style="background-color: lightblue; text-align: center"><td style="width: 200px">设备</td><td>设备在Linux内的文件名</td></tr>
+<tr class="text_import2"><td>SCSI/SATA/USB硬盘机</td><td>/dev/sd[a-p]</td></tr>
+<tr class="text_import2"><td>USB快闪碟</td><td>/dev/sd[a-p] (与SATA相同)</td></tr>
+<tr class="text_import2"><td>VirtI/O界面</td><td>/dev/vd[a-p] (用于虚拟机内)</td></tr>
+<tr class="text_import2"><td>软驱</td><td>/dev/fd[0-7]</td></tr>
+<tr class="text_import2"><td>打印机</td><td>/dev/lp[0-2] (25针打印机)<br>/dev/usb/lp[0-15] (USB 接口)</td></tr>
+<tr class="text_import2"><td>鼠标</td><td>/dev/input/mouse[0-15] (通用)<br>/dev/psaux (PS/2界面)<br>/dev/mouse (当前鼠标)</td></tr>
+<tr class="text_import2"><td>CDROM/DVDROM</td><td>/dev/scd[0-1] (通用)<br>/dev/sr[0-1] (通用，CentOS 较常见)<br>/dev/cdrom (当前 CDROM)</td></tr>
+<tr class="text_import2"><td>磁带机</td><td>/dev/ht0 (IDE 界面)<br>/dev/st0 (SATA/SCSI界面)<br>/dev/tape (当前磁带)</td></tr>
+<tr class="text_import2"><td>IDE硬盘机</td><td>/dev/hd[a-d] (旧式系统才有)</td></tr>
+</tbody></table>
+		<p>时至今日，由于 IDE 界面的磁盘机几乎已经被淘汰，太少见了！因此现在连 IDE 界面的磁盘文件名也都被仿真成 /dev/sd[a-p] 了！此外，
+		如果你的机器使用的是跟互联网供应商 (ISP) 申请使用的云端机器，这时可能会得到的是虚拟机。为了加速，虚拟机内的磁盘是使用仿真器产生，
+		该仿真器产生的磁盘文件名为 /dev/vd[a-p] 系列的文件名喔！要注意！要注意！</p>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		更多Linux核心支持的硬件设备与文件名，可以参考如下网页：<br>
+		<a href="https://www.kernel.org/doc/Documentation/devices.txt" target="_blank">https://www.kernel.org/doc/Documentation/devices.txt</a>
+		</fieldset><br>	</div><br>
+	<a id="hardware_virtual"></a>
+	<div class="block2"><div class="gototop"><a href="0130designlinux.html#top">Top</a></div>
+	<h2>2.1.4 使用虚拟机学习</h2>
+		<p>由于近年来硬件虚拟化技术的成熟，目前普通的中阶个人电脑的 CPU 微指令集中，就已经集成了硬件虚拟化指令集了！
+		所以，随便一台电脑就能够虚拟化出好几台逻辑独立的系统了！很赞！</p>
+		<p>因为虚拟化系统可以很简单的制作出相仿的硬件资源，因此我们在学习的时候，比较能够取得相同的环境来查阅学习的效果！
+		所以，在本书的后续所有动作中，我们都是使用虚拟化系统来做说明！毕竟未来你实际接触到 Linux 系统时，很有可能公司交代给你的就是虚拟机了！
+		趁早学也不错！</p>
+		<p>由于虚拟化的软件非常之多，网络上也有一堆朋友的教学在。如果你的系统是 windows 系列的话，鸟哥个人推荐你使用 virtualbox 这个软件！
+		至于如果你原本就用 Linux 系统，例如 Fedora/Ubuntu 等系列的话，那么建议你使用原本系统内就有的虚拟机管理员来处理即可。目前 Linux
+		系统大多使用 KVM 这个虚拟化软件就是了。底下提供一些网站给您学习学习！鸟哥之后的章节所使用的机器，就是透过 KVM 建置出来的系统喔！
+		提供给你作参考啰。</p>
+		<ul>
+		<li><a href="https://www.virtualbox.org/" target="_blank">Virtualbox 官网 (https://www.virtualbox.org)</a></li>
+		<li><a href="https://www.virtualbox.org/manual/ch01.html" target="_blank">Virtualbox 官网教学 (https://www.virtualbox.org/manual/ch01.html)</a></li>
+		<li><a href="http://docs.fedoraproject.org/en-US/Fedora/13/html/Virtualization_Guide/part-Virtualization-Virtualization_Reference_Guide.html" target="_blank">Fedora 教学 http://docs.fedoraproject.org/en-US/Fedora/13/html/Virtualization_Guide/part-Virtualization-Virtualization_Reference_Guide.html</a></li>
+		</ul>
+	<br></div>
+</div>
+<a id="partition"></a>
+<div class="block1">
+<h2>2.2 磁盘分割</h2>
+	<p>这一章在规划的重点是为了要安装Linux，那Linux系统是安装在电脑组件的那个部分呢？就是磁盘啦！所以我们当然要来认识一下磁盘先。
+	我们知道一块磁盘是可以被分割成多个分区的(partition)，以旧有的Windows观点来看，你可能会有一颗磁盘并且将他分割成为C:, 
+	D:, E:槽对吧！那个C, D, E就是分区(partition)啰。但是Linux的设备都是以文件的型态存在，那分区的文件名又是什么？
+	如何进行磁盘分割？磁盘分割有哪些限制？目前的 BIOS 与 UEFI 分别是啥？MSDOS 与 GPT 又是啥？
+	都是我们这个小节所要探讨的内容啰。</p>
+	<a id="partition_name"></a>
+	<div class="block2"><div class="gototop"><a href="0130designlinux.html#top">Top</a></div>
+	<h2>2.2.1 磁盘连接的方式与设备文件名的关系</h2>
+		<p>由<a href="0105computers.html#pc_hd">第零章</a>提到的磁盘说明，我们知道个人电脑常见的磁盘接口有两种，
+		分别是SATA与SAS接口，目前(2015)的主流是SATA接口。不过更老旧的电脑则有可能是已经不再流行的IDE界面喔！
+		以前的IDE界面与SATA界面在Linux的磁盘代号并不相同，不过近年来为了统一处理，大部分Linux distribution已经将IDE界面的磁盘文件名也仿真成跟SATA一样了！
+		所以你大概不用太担心磁盘设备文件名的问题了！</p>
+		<p>时代在改变啊～既然IDE界面都可以消失了，那磁盘文件名还有什么可谈的呢？嘿嘿！有啊！如同上一小节谈到的，虚拟化是目前很常见的一项技术，
+		因此你在使用的机器很可能就是虚拟机，这些虚拟机使用的『虚拟磁盘』并不是正规的磁盘界面！这种情况底下，你的磁盘文件名就不一样了！
+		<span class="text_import2">正常的实体机器大概使用的都是 /dev/sd[a-] 的磁盘文件名，至于虚拟机环境底下，为了加速，可能就会使用 /dev/vd[a-p] 这种设备文件名喔！</span>
+		因此在实际处理你的系统时，可能得要了解为啥会有两种不同磁盘文件名的原因才好！</p>
+<table class="exam"><tbody><tr><td>
+例题：<div>
+假设你的主机为虚拟机，里面仅有一颗VirtIO接口的磁盘，请问他在Linux操作系统里面的设备文件名为何？
+</div>
+答：<div>
+参考 2.1.3 小节的介绍，虚拟机使用 VirtIO 界面时，磁盘文件名应该是 /dev/vda 才对！
+</div>
+</td></tr></tbody></table>
+		<p>再以SATA接口来说，由于SATA/USB/SAS等磁盘接口都是使用SCSI模块来驱动的，
+		因此这些接口的磁盘设备文件名都是/dev/sd[a-p]的格式。
+		所以SATA/USB接口的磁盘根本就没有一定的顺序，那如何决定他的设备文件名呢？
+		这个时候就得要<span class="text_import2">根据Linux核心侦测到磁盘的顺序</span>了！这里以底下的例子来让你了解啰。</p>
+<table class="exam"><tbody><tr><td>
+例题：<div>
+如果你的PC上面有两个SATA磁盘以及一个USB磁盘，而主板上面有六个SATA的插槽。这两个SATA磁盘分别安插在主板上的SATA1, SATA5插槽上，
+请问这三个磁盘在Linux中的设备文件名为何？
+</div>
+答：<div>
+由于是使用侦测到的顺序来决定设备文件名，并非与实际插槽代号有关，因此设备的文件名如下：
+<ol>
+<li>SATA1插槽上的文件名：<span class="text_import2">/dev/sda</span></li>
+<li>SATA5插槽上的文件名：<span class="text_import2">/dev/sdb</span></li>
+<li>USB磁盘(开机完成后才被系统捉到)：<span class="text_import2">/dev/sdc</span></li>
+</ol>
+</div>
+</td></tr></tbody></table>
+		<p>通过上面的介绍后，你应该知道了在Linux系统下的各种不同接口的磁盘的设备文件名了。
+		OK！好像没问题了呦！才不是呢～问题很大呦！
+		因为如果你的磁盘被分割成两个分区，那么每个分区的设备文件名又是什么？在了解这个问题之前，我们先来复习一下磁盘的组成，
+		因为现今磁盘的分割与他物理的组成很有关系！</p>
+		<p>我们在<a href="0105computers.html">计算机概论</a>谈过磁盘的组成主要有磁盘盘、机械手臂、磁盘读取头与主轴马达所组成，
+		而数据的写入其实是在磁盘盘上面。<span class="text_import2">磁盘盘上面又可细分出磁区(Sector)与磁道(Track)两种单位，
+		其中磁区的物理量设计有两种大小，分别是 512bytes 与 4Kbytes</span>。假设磁盘只有一个磁盘盘，那么磁盘盘有点像底下这样：</p>
+	<a id="fig2.2.1"></a>
+	<div style="text-align:center; margin: 0 auto 0 auto; "><img src="./vbird_files/Disktructure.jpg" alt="磁盘盘组成示意图" title="磁盘盘组成示意图" style="border: 1px solid black; padding: 10px "></div>
+	<div style="text-align: center;">图2.2.1、磁盘盘组成示意图</div>
+		<p>那么是否每个磁区都一样重要呢？其实整颗磁盘的第一个磁区特别的重要，因为他记录了整颗磁盘的重要信息！
+		早期磁盘第一个磁区里面含有的重要信息我们称为MBR (Master Boot Record) 格式，但是由于近年来磁盘的容量不断扩大，造成读写上的一些困扰，
+		甚至有些大于 2TB 以上的磁盘分割已经让某些操作系统无法访问。因此后来又多了一个新的磁盘分割格式，称为 GPT (GUID partition table)！
+		这两种分割格式与限制不太相同啦！</p>
+		<p>那么分割表又是啥？其实你刚刚拿到的整颗硬盘就像一根原木，你必须要在这根原木上面切割出你想要的区段，
+		这个区段才能够再制作成为你想要的家具！如果没有进行切割，那么原木就不能被有效的使用。
+		同样的道理，你必须要针对你的硬盘进行分割，这样硬盘才可以被你使用的！</p>
+	<br></div><br>
+	<a id="partition_table"></a>
+	<div class="block2"><div class="gototop"><a href="0130designlinux.html#top">Top</a></div>
+	<h2>2.2.2 MSDOS(MBR) 与 GPT 磁盘分割表(partition table)</h2>
+		<p>但是硬盘总不能真的拿锯子来切切割割吧？那硬盘还真的是会坏掉去！那怎办？在前一小节的图标中，
+		我们有看到『开始与结束磁道』吧？而通常磁盘可能有多个磁盘盘，所有磁盘盘的同一个磁道我们称为磁柱 (Cylinder)，
+		通常那是文件系统的最小单位，也就是分区的最小单位啦！为什么说『通常』呢？因为近来有 GPT 这个可达到 64bit 纪录功能的分割表，
+		现在我们甚至可以使用磁区 (sector) 号码来作为分割单位哩！厉害了！
+		所以说，我们就是<span class="text_import2">利用参考对照磁柱或磁区号码的方式来处理啦！</span></p>
+		<p>也就是说，分割表其实目前有两种格式喔！我们就依序来谈谈这两种分割表格式吧。</p>
+		<ul class="toplist">
+		<li>MSDOS (MBR) 分割表格式与限制</li></ul>
+		<p>早期的 Linux 系统为了兼容于 Windows 的磁盘，因此使用的是支持 Windows 的 MBR(Master Boot Record, 
+		主要开机纪录区) 的方式来处理开机管理程序与分割表！而开机管理程序纪录区与分割表则通通放在磁盘的第一个磁区，
+		这个磁区通常是 512bytes 的大小 (旧的磁盘磁区都是 512bytes 喔！)，所以说，第一个磁区 512bytes 会有这两个数据：</p>
+		<ul class="text_import2">
+		<li>主要开机记录区(Master Boot Record, MBR)：可以安装开机管理程序的地方，有446 bytes</li>
+		<li>分割表(partition table)：记录整颗硬盘分割的状态，有64 bytes</li>
+		</ul>
+		<p><span class="text_import2">由于分割表所在区块仅有64 bytes容量，因此最多仅能有四组记录区，每组记录区记录了该区段的启始与结束的磁柱号码</span>。
+		若将硬盘以长条形来看，然后将磁柱以直条图来看，那么那64 bytes的记录区段有点像底下的图标：</p>
+	<a id="fig2.2.2"></a>
+	<div style="text-align:center; margin: 0 auto 0 auto; "><img src="./vbird_files/partition-1.png" alt="磁盘分割表的作用示意图" title="磁盘分割表的作用示意图" style="border: 0px solid black; padding: 0px "></div>
+	<div style="text-align: center;">图2.2.2、磁盘分割表的作用示意图</div>
+		<p>假设上面的硬盘设备文件名为/dev/sda时，那么这四个分区在Linux系统中的设备文件名如下所示，
+		重点在于文件名后面会再接一个数字，这个数字与该分区所在的位置有关喔！</p>
+		<ul>
+		<li>P1:/dev/sda1</li>
+		<li>P2:/dev/sda2</li>
+		<li>P3:/dev/sda3</li>
+		<li>P4:/dev/sda4</li>
+		</ul>
+		<p>上图中我们假设硬盘只有400个磁柱，共分割成为四个分区，第四个分区所在为第301到400号磁柱的范围。
+		当你的操作系统为Windows时，那么第一到第四个分区的代号应该就是C, D, E, F。当你有数据要写入F槽时，
+		你的数据会被写入这颗磁盘的301~400号磁柱之间的意思。</p>
+		<p>由于分割表就只有64 bytes而已，最多只能容纳四笔分割的记录，
+		这四个分割的记录被称为主要(Primary)或延伸(Extended)分区。
+		根据上面的图标与说明，我们可以得到几个重点信息：</p>
+		<ul class="text_import2">
+		<li>其实所谓的『分割』只是针对那个64 bytes的分割表进行设置而已！</li>
+		<li>硬盘缺省的分割表仅能写入四组分割信息</li>
+		<li>这四组分割信息我们称为主要(Primary)或延伸(Extended)分区</li>
+		<li>分区的最小单位『通常』为磁柱(cylinder)</li>
+		<li>当系统要写入磁盘时，一定会参考磁盘分割表，才能针对某个分区进行数据的处理</li>
+		</ul>
+		<p>咦！你会不会突然想到，为啥要分割啊？基本上你可以这样思考分割的角度：</p>
+		<ol>
+		<li><span class="text_import2">数据的安全性：</span><br>
+		因为每个分区的数据是分开的！所以，当你需要将某个分区的数据重整时，例如你要将电脑中Windows的C槽重新安装一次系统时，
+		可以将其他重要数据移动到其他分区，例如将邮件、桌面数据移动到D槽去，那么C槽重装系统并不会影响到D槽！
+		所以善用分区，可以让你的数据更安全。
+		<br><br></li>
+		<li><span class="text_import2">系统的性能考量：</span><br>
+		由于分区将数据集中在某个磁柱的区段，例如上图当中第一个分区位于磁柱号码1~100号，如此一来当有数据要读取自该分区时，
+		磁盘只会搜索前面1~100的磁柱范围，由于数据集中了，将有助于数据读取的速度与性能！所以说，分割是很重要的！</li>
+		</ol>
+		<p>既然分割表只有记录四组数据的空间，那么是否代表我一颗硬盘最多只能分割出四个分区？当然不是啦！有经验的朋友都知道，
+		你可以将一颗硬盘分割成十个以上的分区的！那又是如何达到的呢？在Windows/Linux系统中，
+		我们是透过刚刚谈到的延伸分割(Extended)的方式来处理的啦！延伸分割的想法是：
+		<span class="text_import2">既然第一个磁区所在的分割表只能记录四笔数据，
+		那我可否利用额外的磁区来记录更多的分割信息？</span>实际上图标有点像底下这样：</p>
+	<a id="fig2.2.3"></a>
+	<div style="text-align:center; margin: 0 auto 0 auto; "><img src="./vbird_files/partition-2.png" alt="磁盘分割表的作用示意图" title="磁盘分割表的作用示意图" style="border: 0px solid black; padding: 0px "></div>
+	<div style="text-align: center;">图2.2.3、磁盘分割表的作用示意图</div>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		实际上延伸分割并不是只占一个区块，而是会分布在每个分区的最前面几个磁区来记载分割信息的！只是为了方便读者记忆，
+		鸟哥在上图就将他简化了！有兴趣的读者可以到底下的链接瞧一瞧实际延伸分割的纪录方式：<br>
+		<a href="http://en.wikipedia.org/wiki/Extended_boot_record" target="_blank">http://en.wikipedia.org/wiki/Extended_boot_record</a>
+		</fieldset><br>
+		<p>在上图当中，我们知道硬盘的四个分割记录区仅使用到两个，P1为主要分割，而P2则为延伸分割。请注意，
+		<span class="text_import2">延伸分割的目的是使用额外的磁区来记录分割信息，延伸分割本身并不能被拿来格式化</span>。
+		然后我们可以透过延伸分割所指向的那个区块继续作分割的记录。</p>
+		<p>如上图右下方那个区块有继续分割出五个分区，
+		这五个由延伸分割继续切出来的分区，就被称为<span class="text_import2">逻辑分区(logical partition)</span>。
+		同时注意一下，由于逻辑分区是由延伸分割继续分割出来的，所以他可以使用的磁柱范围就是延伸分割所设置的范围喔！
+		也就是图中的101~400啦！</p>
+		<p>同样的，上述的分区在Linux系统中的设备文件名分别如下：</p>
+		<ul>
+		<li>P1:/dev/sda1</li>
+		<li>P2:/dev/sda2</li>
+		<li class="text_import1">L1:/dev/sda5</li>
+		<li>L2:/dev/sda6</li>
+		<li>L3:/dev/sda7</li>
+		<li>L4:/dev/sda8</li>
+		<li>L5:/dev/sda9</li>
+		</ul>
+		<p>仔细看看，怎么设备文件名没有/dev/sda3与/dev/sda4呢？因为前面四个号码都是保留给Primary或Extended用的嘛！
+		所以<span class="text_import2">逻辑分区的设备名称号码就由5号开始了</span>！这在 MBR 方式的分割表中是个很重要的特性，不能忘记喔！</p>
+		<p>MBR 主要分割、延伸分割与逻辑分割的特性我们作个简单的定义啰：</p>
+		<ul class="text_import2">
+		<li>主要分割与延伸分割最多可以有四笔(硬盘的限制)</li>
+		<li>延伸分割最多只能有一个(操作系统的限制)</li>
+		<li>逻辑分割是由延伸分割持续切割出来的分区；</li>
+		<li>能够被格式化后，作为数据访问的分区为主要分割与逻辑分割。延伸分割无法格式化；</li>
+		<li>逻辑分割的数量依操作系统而不同，在Linux系统中SATA硬盘已经可以突破63个以上的分割限制；</li>
+		</ul>
+		<p>事实上，分割是个很麻烦的东西，因为他是<span class="text_import2">以磁柱为单位的『连续』磁盘空间</span>，
+		且延伸分割又是个类似独立的磁盘空间，所以在分割的时候得要特别注意。我们举底下的例子来解释一下好了：</p>
+<table class="exam"><tbody><tr><td>
+例题：<div>
+在Windows操作系统当中，如果你想要将D与E槽集成成为一个新的分区，而如果有两种分割的情况如下图所示，
+图中的特殊颜色区块为D与E槽的示意，请问这两种方式是否均可将D与E集成成为一个新的分区？<br>
+<a id="fig2.2.4"></a>
+<div style="text-align:center; margin: 0 auto 0 auto; "><img src="./vbird_files/partition-3.png" alt="磁盘空间集成示意图" title="磁盘空间集成示意图" style="border: 0px solid black; padding: 0px "></div>
+<div style="text-align: center;">图2.2.4、磁盘空间集成示意图</div>
+</div>
+答：<ul>
+<li>上图可以集成：因为上图的D与E同属于延伸分割内的逻辑分割，因此只要将两个分区删除，然后再重新创建一个新的分区，
+就能够在不影响其他分区的情况下，将两个分区的容量集成成为一个。<br><br></li>
+<li>下图不可集成：因为D与E分属主分割与逻辑分割，两者不能够集成在一起。除非将延伸分割破坏掉后再重新分割。
+但如此一来会影响到所有的逻辑分区，要注意的是：<span class="text_import2">如果延伸分割被破坏，所有逻辑分割将会被删除。
+</span>因为逻辑分割的信息都记录在延伸分割里面嘛！</li>
+</ul>
+</td></tr></tbody></table>
+		<p>由于第一个磁区所记录的分割表与MBR是这么的重要，几乎只要读取硬盘都会先由这个磁区先读起。
+		因此，如果整颗硬盘的第一个磁区(就是MBR与partition table所在的磁区)物理实体坏掉了，那这个硬盘大概就没有用了！
+		因为系统如果找不到分割表，怎么知道如何读取磁柱区间呢？您说是吧！底下还有一些例题您可以思考看看：</p>
+<table class="exam"><tbody><tr><td>
+例题：<div>
+如果我想将一颗大硬盘『暂时』分割成为四个partitions，同时还有其他的剩余容量可以让我在未来的时候进行规划，
+我能不能分割出四个Primary？若不行，那么你建议该如何分割？
+</div>
+答：<ul>
+<li>由于Primary+Extended最多只能有四个，其中Extended最多只能有一个，这个例题想要分割出四个分区且还要预留剩余容量，
+因此P+P+P+P的分割方式是不适合的。<span class="text_import2">因为如果使用到四个P，则即使硬盘还有剩余容量，
+因为无法再继续分割，所以剩余容量就被浪费掉了</span>。<br><br></li>
+<li>假设你想要将所有的四笔记录都花光，那么P+P+P+E是比较适合的。所以可以用的四个partitions有3个主要及一个逻辑分割，
+剩余的容量在延伸分割中。<br><br></li>
+<li>如果你要分割超过4槽以上时，一定要有Extended分区，而且必须将所有剩下的空间都分配给Extended，
+然后再以logical的分割来规划Extended的空间。
+<span class="text_import2">另外，考虑到磁盘的连续性，一般建议将Extended的磁柱号码分配在最后面的磁柱内</span>。</li> 
+</ul>
+</td></tr></tbody></table><br>
+<table class="exam"><tbody><tr><td>
+例题：<div>
+假如我的PC有两颗SATA硬盘，我想在第二颗硬盘分割出6个可用的分区(可以被格式化来访问数据之用)，
+那每个分区在Linux系统下的设备文件名为何？且分割类型各为何？至少写出两种不同的分割方式。
+</div>
+答：<div>
+由于P(primary)+E(extended)最多只能有四个，其中E最多只能有一个。现在题目要求6个可用的分区，因此不可能分出四个P。
+底下我们假设两种环境，一种是将前四号全部用完，一种是仅花费一个P及一个E的情况：
+<ul>
+<li><span class="text_import2">P+P+P+E的环境：</span><br>
+	<a id="fig2.2.5"></a>
+	<div style="text-align:center; margin: 0 auto 0 auto; "><img src="./vbird_files/partition-4.gif" alt="分割示意图" title="分割示意图" style="border: 0px solid black; padding: 0px "></div>
+	<div style="text-align: center;">图2.2.5、分割示意图</div>
+实际可用的是/dev/sdb1, /dev/sdb2, /dev/sdb3, /dev/sdb5, /dev/sdb6, 
+/dev/sdb7这六个，至于/dev/sdb4这个延伸分割本身仅是提供来给逻辑分区创建之用。
+<br><br></li>
+<li><span class="text_import2">P+E的环境：</span><br>
+	<a id="fig2.2.6"></a>
+	<div style="text-align:center; margin: 0 auto 0 auto; "><img src="./vbird_files/partition-5.gif" alt="分割示意图" title="分割示意图" style="border: 0px solid black; padding: 0px "></div>
+	<div style="text-align: center;">图2.2.6、分割示意图</div>
+注意到了吗？因为1~4号是保留给主要/延伸分区的，因此第一个逻辑分区一定是由5号开始的！再次强调啊！
+所以/dev/sdb3, /dev/sdb4就会被保留下来没有用到了！</li>
+</ul>
+</div>
+</td></tr></tbody></table>
+		<p>MBR 分割表除了上述的主分割、延伸分割、逻辑分割需要注意之外，由于每组分割表仅有 16bytes 而已，因此可纪录的信息真的是相当有限的！
+		所以，在过去 MBR 分割表的限制中经常可以发现如下的问题：</p>
+		<ul class="text_import2">
+		<li>操作系统无法抓取到 2.2T 以上的磁盘容量！</li>
+		<li>MBR 仅有一个区块，若被破坏后，经常无法或很难救援。</li>
+		<li>MBR 内的存放开机管理程序的区块仅 446bytes，无法容纳较多的代码。</li>
+		</ul>
+		<p>这个 2.2TB 限制的现象在早期并不会很严重。但是，近年来硬盘厂商动不对推出的磁盘容量就高达好几个 TB 的容量！目前 (2015) 单一磁盘最高容量甚至高达 8TB 了！
+		如果使用磁盘数组的系统，像鸟哥的一组系统中，用了 24 颗 4TB 磁盘搭建出磁盘数组，那在 Linux 底下就会看到有一颗 70TB 左右的磁盘！
+		如果使用 MBR 的话...那得要 2TB/2TB 的割下去，虽然 Linux kernel 现在已经可以透过某些机制让磁盘分割高过 63 个以上，但是这样就得要割出将近 40 个分区～
+		真要命... 为了解决这个问题，所以后来就有 GPT 这个磁盘分割的格式出现了！</p>
+		<ul class="toplist">
+		<li>GUID partition table, GPT 磁盘分割表(<a href="0130designlinux.html#ps1">注1</a>)</li></ul>
+		<p>因为过去一个磁区大小就是 512bytes 而已，不过目前已经有 4K 的磁区设计出现！为了兼容于所有的磁盘，因此在磁区的定义上面，
+		大多会使用所谓的逻辑区块地址(Logical Block Address, LBA)来处理。GPT 将磁盘所有区块以此 LBA(缺省为 512bytes 喔！) 来规划，而第一个 
+		LBA 称为 LBA0 (从 0 开始编号)。</p>
+		<p>与 MBR 仅使用第一个 512bytes 区块来纪录不同， GPT 使用了 34 个 LBA 区块来纪录分割信息！同时与过去 MBR 仅有一的区块，被干掉就死光光的情况不同，
+		GPT 除了前面 34 个 LBA 之外，整个磁盘的最后 33 个 LBA 也拿来作为另一个备份！这样或许会比较安全些吧！详细的结构有点像底下的模样(<a href="0130designlinux.html#ps1">注1</a>)：</p>
+	<a id="fig2.2.7"></a>
+	<div style="text-align:center; margin: 0 auto 0 auto; "><img src="./vbird_files/gpt_partition_1.jpg" alt="GPT 分割表的结构示意图" title="GPT 分割表的结构示意图" style="border: 1px solid black; padding: 10px "></div>
+	<div style="text-align: center;">图2.2.7、GPT 分割表的结构示意图</div>
+		<p>上述图标的解释说明如下：</p>
+		<ul class="illus">
+		<li>LBA0 (MBR 兼容区块)
+		<p>与 MBR 模式相似的，这个兼容区块也分为两个部份，一个就是跟之前 446 bytes 相似的区块，<span class="text_import2">保存了第一阶段的开机管理程序</span>！
+		而在原本的分割表的纪录区内，这个兼容模式仅放入一个特殊标志的分割，用来表示此磁盘为 GPT 格式之意。而不懂 GPT 分割表的磁盘管理程序，
+		就不会认识这颗磁盘，除非用户有特别要求要处理这颗磁盘，否则该管理软件不能修改此分割信息，进一步保护了此磁盘喔！</p></li>
+		<li>LBA1 (GPT 表头纪录)
+		<p>这个部份纪录了分割表本身的位置与大小，同时纪录了备份用的 GPT 分割 (就是前面谈到的在最后 34 个 LBA 区块) 放置的位置，
+		同时放置了分割表的检验机制码 (CRC32)，操作系统可以根据这个检验码来判断 GPT 是否正确。若有错误，还可以透过这个纪录区来取得备份的 GPT(磁盘最后的那个备份区块)
+		来恢复 GPT 的正常运作！</p>
+		</li><li>LBA2-33 (实际纪录分割信息处)
+		<p>从 LBA2 区块开始，<span class="text_import2">每个 LBA 都可以纪录 4 笔分割纪录，所以在缺省的情况下，总共可以有 4*32 = 128 笔分割纪录喔</span>！因为每个 
+		LBA 有 512bytes，因此每笔纪录用到 128 bytes 的空间，除了每笔纪录所需要的识别码与相关的纪录之外，<span class="text_import2">GPT 在每笔纪录中分别提供了 64bits 
+		来记载开始/结束的磁区号码</span>，因此，GPT 分割表对於单一分区来说，
+		他的最大容量限制就会在『 2<sup>64</sup> * 512bytes = 2<sup>63</sup> * 1Kbytes = 2<sup>33</sup>*TB = 8 ZB 』，要注意 1ZB = 2<sup>30</sup>TB 啦！
+		你说有没有够大了？</p>
+		</li></ul>
+		<p class="text_import2">现在 GPT 分割缺省可以提供多达 128 笔纪录，而在 Linux 本身的核心设备纪录中，针对单一磁盘来说，虽然过去最多只能到达 15 
+		个分区，不过由于 Linux kernel 透过 udev 等方式的处理，现在 Linux 也已经没有这个限制在了！
+		此外，GPT 分割已经没有所谓的主、延伸、逻辑分割的概念，既然每笔纪录都可以独立存在，
+		当然每个都可以视为是主分割！每一个分割都可以拿来格式化使用喔！</p>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		鸟哥一直以为核心认识的设备主要/次要号码就一定是连续的，因此一直没有注意到由于新的机制的关系，分区已经可以突破核心限制的状况！
+		感谢大陆网友微博代号『学习日记博客』的提醒！此外，为了查找正确性，鸟哥还真的有注意到网络上有朋友实际拿一颗磁盘分割出 130 个以上的分区，
+		结果他发现 120 个以前的分区均可以格式化使用，但是 130 之后的似乎不太能够使用了！或许跟缺省的 GPT 共 128 个号码有关！
+		</fieldset><br>
+		<p>虽然新版的 Linux 大多认识了 GPT 分割表，没办法，我们 server 常常需要比较高容量的磁盘嘛！不过，在磁盘管理工具上面，
+		fdisk 这个老牌的软件并不认识 GPT 喔！要使用 GPT 的话，得要操作类似 gdisk 或者是 parted 指令才行！这部份我们会在第二篇再来谈一谈。
+		另外，开机管理程序方面， grub 第一版并不认识 GPT 喔！得要 grub2 以后才会认识的！开机管理程序这部份则第五篇再来谈喔！</p>
+		<p>并不是所有的操作系统都可以读取到 GPT 的磁盘分割格式喔！同时，也不是所有的硬件都可以支持 GPT 格式喔！是否能够读写 GPT 格式又与开机的检测程序有关！
+		那开机的检测程序又分成啥鬼东西呢？就是 BIOS 与 UEFI 啦！那这两个又是啥东西？就让我们来聊一聊！</p>
+	<br></div><br>
+	<a id="partition_bios_uefi"></a>
+	<div class="block2"><div class="gototop"><a href="0130designlinux.html#top">Top</a></div>
+	<h2>2.2.3 开机流程中的 BIOS 与 UEFI 开机检测程序</h2>
+		<p>我们在<a href="0105computers.html">计算机概论</a>里面谈到了，没有运行软件的硬件是没有用的，除了会电人之外...，
+		而为了电脑硬件系统的资源合理分配，因此有了操作系统这个系统软件的产生。由于操作系统会控制所有的硬件并且提供核心功能，
+		因此我们的电脑就能够认识硬盘内的文件系统，并且进一步的读取硬盘内的软件文件与运行该软件来达成各项软件的运行目的。</p>
+		<p>问题是，你有没有发现，既然操作系统也是软件，那么我的电脑又是如何认识这个操作系统软件并且运行他的？
+		明明开机时我的电脑还没有任何软件系统，那他要如何读取硬盘内的操作系统文件啊？嘿嘿！这就得要牵涉到电脑的开机进程了！
+		底下就让我们来谈一谈这个开机进程吧！</p>
+		<p>基本上，目前的主机系统在加载硬件驱动方面的进程，主要有早期的 BIOS 与新的 UEFI 两种机制，我们分别来谈谈啰！</p>
+		<ul class="toplist">
+		<li>BIOS 搭配 MBR/GPT 的开机流程</li></ul>
+		<p>在<a href="0105computers.html">计算机概论</a>里面我们有谈到那个可爱的BIOS与CMOS两个东西，
+		CMOS是记录各项硬件参数且嵌入在主板上面的保存器，BIOS则是一个写入到主板上的一个固件(再次说明，
+		固件就是写入到硬件上的一个软件程序)。<span class="text_import2">这个BIOS就是在开机的时候，电脑系统会主动运行的第一个程序了！</span></p>
+		<p>接下来BIOS会去分析电脑里面有哪些保存设备，我们以硬盘为例，BIOS会依据用户的设置去取得能够开机的硬盘，
+		并且<span class="text_import2">到该硬盘里面去读取第一个磁区的MBR位置。
+		MBR这个仅有446 bytes的硬盘容量里面会放置最基本的开机管理程序</span>，
+		此时BIOS就功成圆满，而接下来就是MBR内的开机管理程序的工作了。</p>
+		<p><span class="text_import2">这个开机管理程序的目的是在加载(load)核心文件</span>，
+		由于开机管理程序是操作系统在安装的时候所提供的，所以他会认识硬盘内的文件系统格式，因此就能够读取核心文件，
+		然后接下来就是核心文件的工作，开机管理程序与 BIOS 也功成圆满，将之后的工作就交给大家所知道的操作系统啦！</p>
+		<p>简单的说，整个开机流程到操作系统之前的动作应该是这样的：</p>
+		<ol class="text_import2">
+		<li><span style="font-weight: bold;">BIOS</span>：开机主动运行的固件，会认识第一个可开机的设备；</li>
+		<li><span style="font-weight: bold;">MBR</span>：第一个可开机设备的第一个磁区内的主要开机记录区块，内含开机管理程序；</li>
+		<li><span style="font-weight: bold;">开机管理程序(boot loader)</span>：一支可读取核心文件来运行的软件；</li>
+		<li><span style="font-weight: bold;">核心文件</span>：开始操作系统的功能...</li>
+		</ol>
+		<p>第二点要注意，如果你的分割表为 GPT 格式的话，那么 BIOS 也能够从 LBA0 的 MBR 兼容区块读取第一阶段的开机管理代码，
+		如果你的开机管理程序能够认识 GPT 的话，那么使用 BIOS 同样可以读取到正确的操作系统核心喔！换句话说，
+		如果开机管理程序不懂 GPT ，例如 Windows XP 的环境，那自然就无法读取核心文件，开机就失败了！</p>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		由于 LBA0 仅提供第一阶段的开机管理代码，因此如果你使用类似 grub 的开机管理程序的话，那么就得要额外分割出一个『 BIOS boot 』的分区，
+		这个分区才能够放置其他开机过程所需的代码！在 CentOS 当中，这个分区通常占用 2MB 左右而已。
+		</fieldset><br>
+		<p>由上面的说明我们会知道，BIOS与MBR都是硬件本身会支持的功能，至于Boot 
+		loader则是操作系统安装在MBR上面的一套软件了。由于MBR仅有446 bytes而已，因此这个开机管理程序是非常小而美的。
+		这个boot loader的主要任务有底下这些项目：</p>
+		<ul class="text_import2">
+		<li><span style="font-weight: bold;">提供菜单</span>：用户可以选择不同的开机项目，这也是多重开机的重要功能！</li>
+		<li><span style="font-weight: bold;">加载核心文件</span>：直接指向可开机的程序区段来开始操作系统；</li>
+		<li><span style="font-weight: bold;">转交其他loader</span>：将开机管理功能转交给其他loader负责。 </li>
+		</ul>
+		<p>上面前两点还容易理解，但是第三点很有趣喔！那表示你的电脑系统里面可能具有两个以上的开机管理程序呢！
+		有可能吗？我们的硬盘不是只有一个MBR而已？是没错啦！但是<span class="text_import2">开机管理程序除了可以安装在MBR之外，
+		还可以安装在每个分区的开机磁区(boot sector)</span>喔！瞎密？分区还有各别的开机磁区喔？
+		没错啊！这个特色才能造就『多重开机』的功能啊！</p>
+		<p>我们举一个例子来说，假设你的个人电脑只有一个硬盘，里面切成四个分区，其中第一、二分区分别安装了Windows及Linux，
+		你要如何在开机的时候选择用Windows还是Linux开机呢？假设MBR内安装的是可同时认识Windows/Linux操作系统的开机管理程序，
+		那么整个流程可以图标如下：</p>
+	<a id="fig2.2.8"></a>
+	<div style="text-align:center; margin: 0 auto 0 auto; "><img src="./vbird_files/loader.gif" alt="开机管理程序的工作运行示意图" title="开机管理程序的工作运行示意图" style="border: 0px solid black; padding: 0px "></div>
+	<div style="text-align: center;">图2.2.8、开机管理程序的工作运行示意图</div>
+		<p>在上图中我们可以发现，MBR的开机管理程序提供两个菜单，菜单一(M1)可以直接加载Windows的核心文件来开机；
+		菜单二(M2)则是将开机管理工作交给第二个分区的开机磁区(boot sector)。当用户在开机的时候选择菜单二时，
+		那么整个开机管理工作就会交给第二分区的开机管理程序了。
+		当第二个开机管理程序启动后，该开机管理程序内(上图中)仅有一个开机菜单，因此就能够使用Linux的核心文件来开机啰。
+		这就是多重开机的工作情况啦！我们将上图作个总结：</p>
+		<ul class="text_import2">
+		<li>每个分区都拥有自己的开机磁区(boot sector)</li>
+		<li>图中的系统槽为第一及第二分区，</li>
+		<li>实际可开机的核心文件是放置到各分区内的！</li>
+		<li>loader只会认识自己的系统槽内的可开机核心文件，以及其他loader而已；</li>
+		<li>loader可直接指向或者是间接将管理权转交给另一个管理程序。</li>
+		</ul>
+		<p>那现在请你想一想，为什么人家常常说：『<span class="text_import2">如果要安装多重开机，
+		最好先安装Windows再安装Linux</span>』呢？这是因为：</p>
+		<ul>
+		<li>Linux在安装的时候，你可以选择将开机管理程序安装在MBR或各别分区的开机磁区，
+		而且Linux的loader可以手动设置菜单(就是上图的M1, M2...)，所以你可以在Linux的boot 
+		loader里面加入Windows开机的选项；<br><br></li>
+		<li>Windows在安装的时候，他的安装程序会主动的覆盖掉MBR以及自己所在分区的开机磁区，你没有选择的机会，
+		而且他没有让我们自己选择菜单的功能。</li>
+		</ul>
+		<p>因此，如果先安装Linux再安装Windows的话，那MBR的开机管理程序就只会有Windows的项目，而不会有Linux的项目
+		(因为原本在MBR内的Linux的开机管理程序就会被覆盖掉)。
+		那需要重新安装Linux一次吗？当然不需要，你只要用尽各种方法来处理MBR的内容即可。
+		例如利用Linux的救援模式来挽救MBR啊！</p>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		开机管理程序与Boot sector的观念是非常重要的，我们会在<a href="0510osloader.html">第十九章</a>分别介绍，您在这里只要先对于(1)开机需要开机管理程序，
+		而(2)开机管理程序可以安装在MBR及Boot Sector两处这两个观念有基本的认识即可，
+		一开始就背太多东西会很混乱啦！
+		</fieldset><br>
+		<ul class="toplist">
+		<li>UEFI BIOS 搭配 GPT 开机的流程 (<a href="0130designlinux.html#ps2">注2</a>)</li></ul>
+		<p>我们现在知道 GPT 可以提供到 64bit 的寻址，然后也能够使用较大的区块来处理开机管理程序。但是 BIOS 其实不懂 GPT 耶！还得要透过 GPT 
+		提供兼容模式才能够读写这个磁盘设备～而且 BIOS 仅为 16 比特的程序，在与现阶段新的操作系统接轨方面有点弱掉了！
+		为了解决这个问题，因此就有了 UEFI (Unified Extensible Firmware Interface) 这个统一可延伸固件界面的产生。</p>
+		<p>UEFI 主要是想要取代 BIOS 这个固件界面，因此我们也称 UEFI 为 UEFI BIOS 就是了。UEFI 使用 C 编程语言，比起使用汇编语言的传统 BIOS
+		要更容易开发！也因为使用 C 语言来撰写，因此如果开发者够厉害，甚至可以在 UEFI 开机阶段就让该系统了解 TCP/IP 而直接上网！
+		根本不需要进入操作系统耶！这让小型系统的开发充满各式各样的可能性！</p>
+		<p>基本上，传统 BIOS 与 UEFI 的差异可以用T客帮杂志汇整的表格来说明(<a href="0130designlinux.html#ps2">注2</a>)：</p>
+<table class="news" style="width: 90%">
+<tbody><tr style="background-color: lightblue;"><td>比较项目</td><td>传统 BIOS</td><td>UEFI</td></tr>
+<tr><td style="background-color: lightblue;">使用编程语言</td><td>汇编语言</td><td>C 语言</td></tr>
+<tr><td style="background-color: lightblue;">硬件资源控制</td><td>使用中断 (IRQ) 管理<br>不可变的内存访问<br>不可变得输入/输出访问</td><td>使用驱动程序与协定</td></tr>
+<tr><td style="background-color: lightblue;">处理器运作环境</td><td>16 比特</td><td>CPU 保护模式</td></tr>
+<tr><td style="background-color: lightblue;">扩充方式</td><td>透过 IRQ 链接</td><td>直接加载驱动程序</td></tr>
+<tr><td style="background-color: lightblue;">第三方厂商支持</td><td>较差</td><td>较佳且可支持多平台</td></tr>
+<tr><td style="background-color: lightblue;">图形化能力</td><td>较差</td><td>较佳</td></tr>
+<tr><td style="background-color: lightblue;">内置简化操作系统前环境</td><td>不支持</td><td>支持</td></tr>
+</tbody></table>
+		<p>从上头我们可以发现，与传统的 BIOS 不同，UEFI 简直就像是一个低级的操作系统～甚至于连主板上面的硬件资源的管理，
+		也跟操作系统相当类似，只需要加载驱动程序即可控制操作。同时由于程序控制得宜，一般来说，使用 UEFI 接口的主机，在开机的速度上要比 BIOS 来的快上许多！
+		因此很多人都觉得 UEFI 似乎可以发展成为一个很有用的操作系统耶～不过，关于这个，你无须担心未来除了 Linux 之外，还得要增加学一个 UEFI 的操作系统啦！为啥呢？</p>
+		<p>UEFI 当初在发展的时候，就制定一些控制在里头，包括硬件资源的管理使用轮询 (polling) 的方式来管理，与 BIOS 直接了解 CPU 以中断的方式来管理比较，
+		这种 polling 的效率是稍微慢一些的，另外，UEFI 并不能提供完整的缓存功能，因此运行效率也没有办法提升。不过由于加载所有的 UEFI 驱动程序之后，
+		系统会开启一个类似操作系统的 shell 环境，用户可以此环境中运行任意的 UEFI 应用程序，而且效果比 MSDOS 更好哩。</p>
+		<p>所以啰，因为效果华丽但性能不佳，因此这个 UEFI 大多用来作为启动操作系统之前的硬件检测、开机管理、软件设置等目的，基本上是比较难的。
+		同时，当加载操作系统后，一般来说，UEFI 就会停止工作，并将系统交给操作系统，这与早期的 BIOS 差异不大。比较特别的是，某些特定的环境下，
+		这些 UEFI 程序是可以部份继续运行的，以协助某些操作系统无法找到特定设备时，该设备还是可以持续运作。</p>
+		<p>此外，由于过去 cracker 经常借由 BIOS 开机阶段来破坏系统，并取得系统的控制权，因此 UEFI 加入了一个所谓的安全启动 (secure boot) 机制，
+		这个机制代表着即将开机的操作系统必须要被 UEFI 所验证，否则就无法顺利开机！微软用了很多这样的机制来管理硬件。
+		不过加入这个机制后，许多的操作系统，包括 Linux ，就很有可能无法顺利开机喔！所以，<span class="text_import2">某些时刻，你可能得要将 UEFI 的 secure boot 功能关闭，
+		才能够顺利的进入 Linux 哩！</span> (这一点让自由软件工作者相当感冒啦！)</p>
+		<p>另外，与 BIOS 模式相比，虽然 UEFI 可以直接取得 GPT 的分割表，<span class="text_import2">不过最好依旧拥有 BIOS boot 的分区支持</span>，
+		同时，为了与 windows 兼容，并且提供其他第三方厂商所使用的 UEFI 应用程序保存的空间，<span class="text_import2">你必须要格式化一个 vfat 的文件系统，
+		大约提供 512MB 到 1G 左右的容量，以让其他 UEFI 运行较为方便。</span>
+		</p><fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		由于 UEFI 已经克服了 BIOS 的 1024 磁柱的问题，因此你的开机管理程序与核心可以放置在磁盘开始的前 2TB 位置内即可！加上之前提到的 BIOS boot 以及 UEFI
+		支持的分区，基本上你的 /boot 目录几乎都是 /dev/sda3 之后的号码了！这样开机还是没有问题的！所以要注意喔！与以前熟悉的分割状况已经不同，
+		/boot 不再是 /dev/sda1 啰！很有趣吧！
+		</fieldset><br>	</div><br>
+	<a id="partition_install"></a>
+	<div class="block2"><div class="gototop"><a href="0130designlinux.html#top">Top</a></div>
+	<h2>2.2.4 Linux安装模式下，磁盘分割的选择(极重要)</h2>
+		<p>在 windows 系统重装之前，你可能都会事先考量，到底系统碟 C 槽要有多少容量？而数据碟 D 槽又要给多大容量等等，
+		然后实际安装的时候，你会发现到其实 C 槽之前会有个 100MB 的分区被独立出来～所以实际上你就会有三个分区就是了。那 Linux 
+		底下又该如何设计类似的东西呢？</p>
+		<ul class="toplist">
+		<li>目录树结构 (directory tree)</li></ul>
+		<p>我们前面有谈过Linux内的所有数据都是以文件的形态来呈现的，所以啰，整个Linux系统最重要的地方就是在于目录树架构。
+		所谓的目录树架构(directory tree)就是以根目录为主，然后向下呈现分支状的目录结构的一种文件架构。
+		所以，<span class="text_import2">整个目录树架构最重要的就是那个根目录(root 
+		directory)，这个根目录的表示方法为一条斜线『<b>/</b>』</span>，
+		所有的文件都与目录树有关。目录树的呈现方式如下图所示：</p>
+	<a id="fig2.2.9"></a>
+	<div style="text-align:center; margin: 0 auto 0 auto; "><img src="./vbird_files/dirtree.gif" alt="目录树相关性示意图" title="目录树相关性示意图" style="border: 0px solid black; padding: 0px "></div>
+	<div style="text-align: center;">图2.2.9、目录树相关性示意图</div>
+		<p>如上图所示，所有的文件都是由根目录(/)衍生来的，而次目录之下还能够有其他的数据存在。上图中长方形为目录，
+		波浪形则为文件。那当我们想要取得mydata那个文件时，系统就得由根目录开始找，然后找到home接下来找到dmtsai，
+		最终的文件名为：/home/dmtsai/mydata的意思。</p>
+		<p>我们现在知道整个Linux系统使用的是目录树架构，但是我们的文件数据其实是放置在磁盘分区当中的，
+		现在的问题是『<span class="text_import2">如何结合目录树的架构与磁盘内的数据</span>』呢？
+		这个时候就牵扯到『挂载(mount)』的问题啦！</p>
+		<ul class="toplist">
+		<li>文件系统与目录树的关系(挂载)</li></ul>
+		<p><span class="text_import2">所谓的『挂载』就是利用一个目录当成进入点，将磁盘分区的数据放置在该目录下；
+		也就是说，进入该目录就可以读取该分区</span>的意思。这个动作我们称为『挂载』，那个进入点的目录我们称为『挂载点』。
+		由于整个Linux系统最重要的是根目录，因此根目录一定需要挂载到某个分区的。
+		至于其他的目录则可依用户自己的需求来给予挂载到不同的分区。我们以下图来作为一个说明：</p>
+	<a id="fig2.2.10"></a>
+	<div style="text-align:center; margin: 0 auto 0 auto; "><img src="./vbird_files/dir_3.png" alt="目录树与分区之间的相关性" title="目录树与分区之间的相关性" style="border: 1px solid black; padding: 10px "></div>
+	<div style="text-align: center;">图2.2.10、目录树与分区之间的相关性</div>
+		<p>上图中假设我的硬盘分为两槽，partition 1是挂载到根目录，至于partition 2则是挂载到/home这个目录。
+		这也就是说，当我的数据放置在/home内的各次目录时，数据是放置到partition 2的，如果不是放在/home底下的目录，
+		那么数据就会被放置到partition 1了！</p>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		windows 也是用挂载的观念啊！鸟哥上课经常谈到的范例就是，当你拿 USB 磁盘放置到你的 windows 时，系统会侦测到一个 F 槽好了，
+		那你想要读取 USB 的数据，要去哪里啊？当然就去 F 啰！同样的这颗 USB，当你拿到学校的 windows 时，却显示的是 H 槽好了，
+		那你要读取 USB 的数据还是去 F 槽吗？当然不是，你会去 H 槽啊！这个『设备与磁盘槽对应的关系，就是 windows 概念下的挂载』啦！
+		这样说，有没有比较好理解？
+		</fieldset><br>
+		<p>其实判断某个文件在那个partition底下是很简单的，透过反向追踪即可。以上图来说，
+		当我想要知道/home/vbird/test这个文件在哪个partition时，由<span class="text_import2">test 
+		--&gt; vbird --&gt; home --&gt; /，看那个『进入点』先被查到那就是使用的进入点了</span>。
+		所以test使用的是/home这个进入点而不是/喔！</p>
+<table class="exam" style="width: 90%"><tbody><tr><td>
+例题：<div>
+现在让我们来想一想，我的电脑系统如何读取光盘内的数据呢？在Windows里面使用的是『光驱』的代号方式处理(假设为E槽时)，
+但在Linux底下我们依旧使用目录树喔！在缺省的情况下，Linux是将光驱的数据放置到/media/cdrom里头去的。
+如果光盘片里面有个文件文件名为『我的文件』时，那么这个文件是在哪里？
+</div>
+答：<div>
+这个文件最终会在如下的完整文件名中：<ul class="text_import2">
+<li>Windows： 桌面\我的电脑\E:\我的文件</li>
+<li>Linux： /media/cdrom/我的文件</li></ul>
+如果光驱并非被挂载到/media/cdrom，而是挂载到/mnt这个目录时，刚刚读取的这个文件的文件名会变成：
+<ul class="text_import2"><li>/mnt/我的文件</li></ul>
+如果你了解这个文件名，这表示你已经知道挂载的意义了！初次接触Linux时，这里最容易搞混，因为他与Windows的分区代号完全不一样！
+</div>
+</td></tr></tbody></table>
+		<ul class="toplist">
+		<li>distributions安装时，挂载点与磁盘分割的规划：</li></ul>
+		<p>既然我们在Linux系统下使用的是目录树系统，所以安装的时候自然就得要规划磁盘分割与目录树的挂载了。
+		实际上，在Linux安装的时候已经提供了相当多的缺省模式让你选择分割的方式了，
+		不过，无论如何，分割的结果可能都不是很能符合自己主机的样子！因为毕竟每个人的『想法』都不太一样！
+		因此，<span class="text_import2">强烈建议使用『自订安装, Custom 』这个安装模式</span>！在某些Linux 
+		distribution中，会将这个模式写的很厉害，叫做是『Expert, 专家模式』，这个就厉害了，
+		请相信您自己，了解上面的说明后，就请自称为专家了吧！没有问题！</p>
+		<ul class="illus">
+		<li><span class="text_import1">自订安装『Custom』：</span><br>
+		<ul style="margin-left: -10px">
+		<li style="margin-top: 10px;"><span class="text_import2">A：初次接触Linux：只要分割『 / 』及『swap』即可：</span>
+		<p>通常初次安装Linux系统的朋友们，我们都会建议他直接以一个最大的分区『 / 』来安装系统。
+		这样作有个好处，就是不怕分割错误造成无法安装的困境！例如/usr是Linux的可运行程序及相关的文档摆放的目录，
+		所以他的容量需求蛮大的，万一你分割了一块分区给/usr，但是却给的不够大，那么就伤脑筋了！
+		因为会造成无法将数据完全写入的问题，就有可能会无法安装啦！因此如果你是初次安装的话，
+		那么可以仅分割成两个分区『 / 与 Swap 』即可。</p></li>
+		<li><span class="text_import2">B：建议分割的方法：预留一个备用的剩余磁盘容量！</span>
+		<p>在想要学习Linux的朋友中，最麻烦的可能就是得要常常处理分割的问题，因为分割是系统管理员很重要的一个任务。
+		但如果你将整个硬盘的容量都用光了，那么你要如何练习分割呢？^_^。所以鸟哥在后续的练习中也会这样做，
+		就是请你特别预留一块不分割的磁盘容量，作为后续练习时可以用来分割之用！</p>
+		<p>此外，预留的分区也可以拿来做为备份之用。因为我们在实际操作Linux系统的过程中，
+		可能会发现某些script或者是重要的文件很值得备份时，就可以使用这个剩余的容量分割出新的分区，
+		并使用来备份重要的设置档或者是script。这有个最大的好处，
+		就是当我的Linux重新安装的时候，我的一些软件或工具程序马上就可以直接在硬盘当中找到！呵呵！重新安装比较便利啦。
+		为什么要重新安装？因为没有安装过Linux十次以上，不要说你学会了Linux了啦！慢慢体会这句话吧！ ^_^</p>
+		</li></ul></li>
+		<li><span class="text_import1">选择Linux安装程序提供的缺省硬盘分割方式：</span><br>
+		<p>对于首次接触Linux的朋友们，鸟哥通常不建议使用各个distribution所提供缺省的Server安装方式，
+		因为会让你无法得知Linux在搞什么鬼，而且也不见得可以符合你的需求！而且要注意的是，
+		选择Server的时候，请『确定』你的硬盘数据是不再需要！因为Linux会自动的把你的硬盘里面旧有的数据全部杀掉！</p></li>
+		</ul>
+		<p>现在你知道Linux为什么不好学了吧？因为很多基础知识都得要先了解！否则连安装都不知道怎么安装～
+		现在你知道Linux的可爱了吧！因为如果你学会了，嘿嘿！很多电脑系统/操作系统的概念都很清晰，
+		转换到不同的信息跑道是比较容易的喔！^_^</p>
+	<br></div>
+</div>
+<a id="beforeinstall"></a>
+<div class="block1">
+<h2>2.3 安装Linux前的规划</h2>
+	<p>安装最重要的第一件事，就是要取得Linux distributions的光盘数据，该如何去下载？
+	目前有这么多的distributions，你应该要选择哪一个版本比较好？为什么会比较好？
+	在台湾，你可以在哪里下载你所需要的Linux distribution呢？这是这一小节所要讨论的喔！</p>
+	<a id="beforeinstall_distro"></a>
+	<div class="block2"><div class="gototop"><a href="0130designlinux.html#top">Top</a></div>
+	<h2>2.3.1 选择适当的distribution</h2>
+		<p>就如同<a href="0110whatislinux.html#torvalds_dist">第一章、Linux是什么</a>里面的distributions谈到的，
+		事实上每个Linux distributions使用的都是来自于<a href="http://www.kernel.org/" target="_blank">http://www.kernel.org</a>官方网站所提供的Linux核心，各家distribution使用的软件其实也都是大同小异，
+		最大的差别或许就是在于软件的安装模式而已。所以，您只要选择其中一套，并且玩得出神入化，
+		那么Linux肯定可以学的成的。</p>
+		<p>不过，由于近年来网络环境实在不很安全，因此你在选择distribution时，特别要了解到该distribution适合的环境，
+		并且最好选择<span class="text_import2">最新的distribution较佳</span>喔！
+		以鸟哥来说，如果是将Linux定位在服务器上面的话，那么Red Hat Enterprise Linux及SuSE Enterprise 
+		Linux应该是很不错的选择，因为他的版本更动幅度较小，并且更新支持的期限较长的原因。</p>
+		<p>在我们这次的练习中，不想给大家太沈重的$$负担啦，所以鸟哥选择CentOS这一个号称与RHEL完全兼容的版本来练习，
+		目前(2015/05)最新的版本是CentOS 7.1版。不过，从 CentOS 7.0 版本开始，安装光盘已经不再提供 386 兼容版本了，
+		亦即仅有 64 比特的硬件才能够使用该安装光盘来装系统了！旧的 32 比特硬件系统已经不主动提供安装光盘了喔！</p>
+		<p>你可以选择到CentOS的官方网站去下载最新的版本，不过我们在台湾嘛！台湾有映设站台(mirror site)，
+		所以由映设站台来下载比较快啊！底下列出CentOS的下载点：</p>
+		<ul>
+		<li>国家高速网络中心：<a href="http://ftp.twaren.net/Linux/CentOS/7/isos/" target="_blank">http://ftp.twaren.net/Linux/CentOS/7/isos/</a></li>
+		<li>昆山科技大学：<a href="http://ftp.ksu.edu.tw/FTP/Linux/CentOS/7/isos/" target="_blank">http://ftp.ksu.edu.tw/FTP/Linux/CentOS/7/isos/</a></li>
+		<li>CentOS官方网站：<a href="http://mirror.centos.org/centos/7/isos/" target="_blank">http://mirror.centos.org/centos/7/isos/</a></li>
+		</ul>
+		<p>CentOS 7.x 有提供完整版本 (everything) 以及大部分安装软件的 DVD1 版本，鸟哥建议如果你的网络速度够大，下载 everything 版本即可，
+		如果你得要使用光驱来安装的话，那直接下载 DVD 版本并且刻录到 DVD 光盘上面即可安装了。如果不想要安装，只想要看看到底开机会是什么 Linux 环境，
+		可以下载 LiveCD/LiveGNOME/LiveKDE 等版本来测试喔！如果想要练功，可以直接使用最小安装光盘版 (Minimal) 来安装！</p>
+		<p>不知道你有没有发现，怎么我想要下载的文件名会是 CentOS-7-x86_64-Everything-1503-01.iso 这样的格式？那个 1503 是啥东西啊？
+		其实从 CentOS 7 之后，版本命名的依据就跟发表的日期有关了！那个 CentOS-7 讲的是 7.x 版本，x86_64 指的是 64 比特操作系统，
+		Everything 指的是包山包海的版本，1503 指的是 2015 年的 3 月发表的版本， 01.iso 则得要与 CentOS7 搭配，所以是 CentOS 7.1 版的意思！
+		这样有看懂吗？</p>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		你所下载的文件扩展名是.iso，这就是所谓的image文件(映像档)。这种image文件是由光盘直接刻录成文件的，
+		文件非常的大，建议你不要使用浏览器(IE/Firefox..)来下载，可以使用FTP用户端程序来下载，例如Filezilla 
+		(<a href="http://filezilla-project.org/download.html" target="_blank">http://filezilla-project.org/download.html</a>)等。这样比较不需要担心断线的问题，因为可以续传啊！<br><br>
+		此外，这种映像档可不能以数据格式刻录成为光盘/DVD的！你必须要使用刻录程序的功能，
+		将他<u>以『映像档格式』刻录成为光盘或DVD才行</u>！切记不要使用刻录数据档格式来刻录喔！重要重要！
+		</fieldset><br>	<br></div><br>
+	<a id="beforeinstall_service"></a>
+	<div class="block2"><div class="gototop"><a href="0130designlinux.html#top">Top</a></div>
+	<h2>2.3.2 主机的服务规划与硬件的关系</h2>
+		<p>我们前面已经提过，由于主机的服务目的不同，所需要的硬件等级与配备自然也就不一样！
+		底下鸟哥稍微提一提每种服务可能会需要的硬件配备规划，当然，还是得提醒，
+		每个朋友的需求都不一样，所以设计您的主机之前，请先针对自己的需求进行考量。而，
+		如果您不知道自己的考量为何，那么就先拿一部普通的电脑来玩一玩吧！不过要记得！
+		<span class="text_import2">不要将重要数据放在练习用的Linux主机上面。</span></p>
+		<ul class="toplist">
+		<li>打造Windows与Linux共存的环境：</li></ul>
+		<p>在某些情况之下，你可能会想要在『<span class="text_import2">一部主机上面安装两套以上的操作系统</span>』，
+		例如底下这些状况：</p>
+		<ul>
+		<li>我的环境里面仅能允许我拥有一部主机，不论是经济问题还是空间问题～</li>
+		<li>因为目前各主要硬件还是针对Windows进行驱动程序的开发，我想要同时保有Windows操作系统与Linux操作系统，
+		以确定在Linux底下的硬件应该使用那个I/O port或者是IRQ的分配等等；</li>
+		<li>我的工作需要同时使用到Windows与Linux操作系统。</li>
+		</ul>
+		<p>果真如此的话，那么刚刚我们在上一个小节谈到的<span class="text_import2">开机流程与多重开机</span>的数据就很重要了。
+		因为需要如此你才能够在一部主机上面操弄两种不同的操作系统嘛！</p>
+		<p>如果你的Linux主机已经是想要拿来作为某些服务之用时，那么务必不要选择太老旧的硬件喔！
+		前面谈到过，太老旧的硬件可能会有电子零件老化的问题～另外，如果你的Linux主机必须要全年无休的开机着，
+		那么摆放这部主机的位置也需要选择啊！好了，底下再来谈一谈，在一般小型企业或学校单位中，
+		常见的某些服务与你的硬件关系有哪些？</p>
+		<ul class="toplist">
+		<li>NAT(达成IP分享器的功能)：</li></ul>
+		<p>通常小型企业或者是学校单位大多仅会有一条对外的连接，然后全公司/学校内的电脑全部透过这条连接连到互联网上。
+		此时我们就得要使用IP分享器来让这一条对外连接分享给所有的公司内部员工使用。
+		那么Linux能不能达到此一IP分享的功能呢？当然可以，就是透过NAT服务即可达成这项任务了！</p>
+		<p>在这种环境中，由于Linux作为一个内/外分离的实体，因此网络流量会比较大一点。
+		此时Linux主机的网络卡就需要比较好些的配备。其他的CPU、RAM、硬盘等等的影响就小很多。
+		事实上，单利用Linux作为NAT主机来分享IP是很不智的～因为PC的耗电能力比IP分享器要大的多～</p>
+		<p>那么为什么你还要使用Linux作为NAT呢？因为Linux NAT还可以额外的加装很多分析软件，
+		可以用来分析用户端的连接，或者是用来控制带宽与流量，达到更公平的带宽使用呢！
+		更多的功能则有待后续更多的学习啰！你也可以参考我们在<a href="http://linux.vbird.org/linux_server/">服务器架设篇</a>当中的数据啰！</p>
+		<ul class="toplist">
+		<li>SAMBA(加入Windows网上邻居)：</li></ul>
+		<p>在你的Windows系统之间如何传输数据呢？当然就是透过网上邻居来传输啦！那还用问。
+		这也是学校老师在上课过程中要分享数据给同学常用的机制了。问题是，Windows 7
+		的网芳一般只能同时分享十部用户端连接，超过的话就得要等待了～真不人性化。</p>
+		<p>我们可以使用Linux上面的SAMBA这个软件来达成加入Windows网芳的功能喔！SAMBA的性能不错，
+		也没有用户端连接数的限制，相当适合于一般学校环境的文件服务器(file server)的角色呢！</p>
+		<p>这种服务器由于分享的数据量较大，对于系统的网络卡与硬盘的大小及速度就比较重要，
+		如果你还针对不同的用户提供文件服务器功能，那么/home这个目录可以考虑独立出来，并且加大容量。</p>
+		<ul class="toplist">
+		<li>Mail(邮件服务器)：</li></ul>
+		<p>邮件服务器是非常重要的，尤其对于现代人来说，电子邮件几乎已经取代了传统的人工邮件递送了。
+		拜硬盘价格大跌及Google/Yahoo/MicroSoft公平竞争之赐，一般免费的email信箱几乎都提供了很不错的邮件服务，
+		包过Web接口的传输、大于2GB以上的容量空间及全年无休的服务等等。例如非常多人使用的gmail就是一例：
+		<a href="http://gmail.com/" target="_blank">http://gmail.com</a>。</p>
+		<p>虽然免费的信箱已经非常够用了，老实说，鸟哥也不建议您架设mail server了。问题是，
+		如果你是一间私人单位的公司，你的公司内发送的email是具有商业机密或隐私性的，那你还想要交给免费信箱去管理吗？
+		此时才有需要架设mail server啰。在mail server上面，重要的也是硬盘容量与网络卡速度，在此情境中，也可以将/var目录独立出来，并加大容量。</p>
+		<ul class="toplist">
+		<li>Web(WWW服务器)：</li></ul>
+		<p>WWW服务器几乎是所有的网络主机都会安装的一个功能，因为他除了可以提供Internet的WWW连接之外，
+		很多在网络主机上面的软件功能(例如某些分析软件所提供的最终分析结果的画面)也都使用WWW作为显示的接口，
+		所以这家伙真是重要到不行的。</p>
+		<p>CentOS使用的是Apache这套软件来达成WWW网站的功能，在WWW服务器上面，如果你还有提供数据库系统的话，
+		那么CPU的等级就不能太低，而最重要的则是RAM了！要增加WWW服务器的性能，通常提升RAM是一个不错的考量。</p>
+		<ul class="toplist">
+		<li>DHCP(提供用户端自动取得IP的功能)：</li></ul>
+		<p>如果你是个局域网路管理员，你的区网内共有20部以上的电脑给一般员工使用，这些员工假设并没有电脑网络的维护技能。
+		那你想要让这些电脑在连上Internet时需要手动去设置IP还是他可以自动的取得IP呢？当然是自动取得比较方便啦！
+		这就是DHCP服务的功能了！用户端电脑只要选择『自动取得IP』，其他的，就是你系统管理员在DHCP服务器上面设置一下即可。
+		这个咚咚的硬件要求可以不必很高啰。</p>
+		<ul class="toplist">
+		<li>FTP：</li></ul>
+		<p>常常看到很多朋友喜欢架设FTP去进行网络数据的传输，甚至很多人会架设地下FTP网站去传输些违法的数据。
+		老实说，『FTP传输再怎么地下化也是很容易被捉到的』啦！所以，鸟哥相当不建议您架设FTP的喔！
+		不过，对于大专院校来说，因为常常需要分享给全校师生一些免费的资源，
+		此时匿名用户的FTP软件功能就很需要存在了。对于FTP的硬件需求来说，硬盘容量与网络卡好坏相关性较高。</p>
+		<p>大致上我们会安装的服务器软件就是这一些啰！
+		当然啦，还是那句老话，在目前你刚接触Linux的这个阶段中，还是以Linux基础为主，
+		鸟哥也希望你先了解Linux的相关主机操作技巧，其他的架站，未来再谈吧！
+		而上面列出的各项服务，仅是提供给你，如果想要架设某种网络服务的主机时，你应该如何规划主机比较好！</p>
+	<br></div><br>
+	<a id="beforeinstall_partition"></a>
+	<div class="block2"><div class="gototop"><a href="0130designlinux.html#top">Top</a></div>
+	<h2>2.3.3 主机硬盘的主要规划</h2>
+		<p>系统对于硬盘的需求跟刚刚提到的主机开放的服务有关，那么除了这点之外，还有没有其他的注意事项呢？
+		当然有，那就是数据的分类与数据安全性的考量。所谓的『数据安全』并不是指数据被网络cracker所破坏，
+		而是指『<span class="text_import2">当主机系统的硬件出现问题时，你的文件数据能否安全的保存</span>』之意。</p>
+		<p>常常会发现网络上有些朋友在问『我的Linux主机因为跳电的关系，造成不正常的关机，结果导致无法开机，这该如何是好？』
+		呵呵，幸运一点的可以使用fsck来解决硬盘的问题，麻烦一点的可能还需要重新安装Linux呢！伤脑筋吧！另外，
+		由于Linux是多人多任务的环境，因此很可能上面已经有很多人的数据在其中了，
+		如果需要重新安装的话，光是搬移与备份数据就会疯掉了！所以硬盘的分割考量是相当重要的！</p>
+		<p>虽然我们在本章的第二小节部分有谈论过磁盘分割了，但是，<span class="text_import2">硬盘的规划对于Linux新鲜人而言，那将是造成你『头疼』的主要凶手之一！
+		因为硬盘的分割技巧需要对于Linux文件结构有相当程度的认知之后才能够做比较完善的规划的！</span>
+		所以，在这里你只要有个基础的认识即可。老实说，没有安装过十次以上的Linux系统，是学不会Linux与磁盘分割的啦！</p>
+		<p>无论如何，底下还是说明一下基本硬盘分割的模式吧！</p>
+		<ul>
+		<li><span class="text_import2">最简单的分割方法</span>：<br>
+		这个在上面第二节已经谈过了，就是仅分割出根目录与内存置换空间( / &amp; swap )即可。
+		然后再预留一些剩余的磁盘以供后续的练习之用。不过，这当然是不保险的分割方法(所以鸟哥常常说这是『懒人分割法』)！
+		因为如果任何一个小细节坏掉(例如坏轨的产生)，你的根目录将可能整个的损毁～挽救方面较困难！<br><br></li>
+		<li><span class="text_import2">稍微麻烦一点的方式</span>：<br>
+		较麻烦一点的分割方式就是先分析这部主机的未来用途，然后根据用途去分析需要较大容量的目录，
+		以及读写较为频繁的目录，将这些重要的目录分别独立出来而不与根目录放在一起，
+		那当这些读写较频繁的磁盘分区有问题时，至少不会影响到根目录的系统数据，那挽救方面就比较容易啊！
+		在缺省的CentOS环境中，底下的目录是比较符合容量大且(或)读写频繁的目录啰：<br>
+		<ul>
+		<li>/boot</li>
+		<li>/</li>
+		<li>/home</li>
+		<li>/var</li>
+		<li>Swap</li>
+		</ul></li>
+		</ul>
+		<p>以鸟哥为例，通常我会希望我的邮件主机大一些，因此我的/var通常会给个数GB的大小，
+		如此一来就可以不担心会有邮件空间不足的情况了！另外，由于我开放SAMBA服务，
+		因此提供每个研究室内人员的数据备份空间，所以啰，/home所开放的空间也很大！至于/usr/的容量，
+		大概只要给2-5GB即可！凡此种种均与您当初预计的主机服务有关！
+		因此，<span class="text_import2">请特别注意您的服务项目！然后才来进行硬盘的规划</span>。</p>
+	<br></div><br>
+	<a id="vbirdcase"></a>
+	<div class="block2"><div class="gototop"><a href="0130designlinux.html#top">Top</a></div>
+	<h2>2.3.4 鸟哥的两个实际案例</h2>
+		<p>这里说一下鸟哥的两个实际的案例，这两个案例是目前还在运作的主机喔！
+		要先声明的是，鸟哥的范例不见得是最好的，因为每个人的考量并不一样。我只是提供相对可以使用的方案而已喔！</p>
+		<ul class="toplist">
+		<li>案例一：家用的小型Linux服务器，IP分享与文件分享中心：</li></ul>
+		<ul>
+		<li><span class="text_import2">提供服务</span>：<br>
+		提供家里的多部电脑的网络连接分享，所以需要NAT功能。提供家庭成员的数据存放容量，由于家里使用Windows系统的成员不少，
+		所以建置SAMBA服务器，提供网芳的网络磁盘功能。<br><br></li>
+		<li><span class="text_import2">主机硬件配备</span>：<br>
+			<ul>
+			<li>CPU使用 AMD Athlon 4850e 省电型 CPU</li>
+			<li>内存大小为 4GB</li>
+			<li>两张网络卡，控制芯片为常见的螃蟹卡(Realtek)</li>
+			<li>只有一颗 640GB 的磁盘</li>
+			<li>显卡为 CPU 内的内置显卡 (Radeon HD 3200)</li>
+			<li>安装完毕后将屏幕,键盘,鼠标,DVD-ROM等配备均移除，仅剩下网络线与电源线。</li>
+			</ul><br></li>
+		<li><span class="text_import2">硬盘分割</span>：<br>
+			<ul>
+			<li>分成 /, /usr, /var, /tmp等目录均独立；</li>
+			<li>1 GB的Swap；</li>
+			<li>安装比较过时的 CentOS 5.x 最新版</li>
+			</ul></li>
+		</ul>
+		<ul class="toplist">
+		<li>案例二：提供Linux的PC集群(Cluster)电脑群：</li></ul>
+		<ul>
+		<li><span class="text_import2">提供服务</span>：<br>
+		提供研究室成员对于模式仿真的软、硬件平台，主要提供的服务并非互联网服务，而是研究室内部的研究工作分析。<br><br></li>
+		<li><span class="text_import2">主机硬件配备</span>：<br>
+			<ul>
+			<li>利用两部多核系统处理器 (一部 20核 40绪，一部 12核 24绪)，搭配 10G 网卡组合而成</li>
+			<li>使用内置的显卡</li>
+			<li>运算用主机仅一颗磁盘，保存用主机提供 8 颗 2TB 磁盘组成的磁盘数组</li>
+			<li>一部 128GB 内存，一部 96GB 内存</li>
+			</ul><br></li>
+		<li><span class="text_import2">硬盘分割</span>：<br>
+			<ul>
+			<li>运算主机方面，整颗磁盘仅分 /boot, / 及 swap 而已</li>
+			<li>保存主机方面，磁盘数组分成两颗磁盘，一颗 100G 给系统用，一颗 12T 给数据用。系统磁盘用的分割为 /boot, /, /home, /tmp, /var 等分割，
+			数据磁盘全部容量规划在同一个分区而已。</li>
+			<li>安装最新的 CentOS 7.x 版</li>
+			</ul></li>
+		</ul>
+		<p>在上面的案例中，案例一是属于小规模的主机系统，因此只要使用预计被淘汰的配备即可进行主机的架设！
+		唯一可能需要购买的大概是网络卡吧！呵呵！而在案例二中，由于我需要大量的数值运算，
+		且运算结果的数据非常的庞大，因此就需要比较大的磁盘容量与较佳的网络系统了。
+		以上的数据请先记得，因为下一章节在实际安装Linux之前，你得先进行主机的规划呀！</p>
+	<br></div>
+</div>
+<a id="hint"></a>
+<div class="block1">
+<h2>2.4 重点回顾</h2>
+<ul class="text_import2">
+	<li>新添购电脑硬件配备时，需要考量的角度有『游戏机/工作机』、『性能/价格比』、『性能/消耗瓦数』、『支持度』等；</li>
+	<li>旧的硬件配备可能由于保存的问题或者是电子零件老化的问题，导致电脑系统非常容易在运作过程中出现不明的当机情况</li>
+	<li>Red Hat的硬件支持：https://hardware.redhat.com/?pagename=hcl</li>
+	<li>在Linux系统中，每个设备都被当成一个文件来对待，每个设备都会有设备文件名。</li>
+	<li>磁盘设备文件名通常分为两种，实际SATA/USB设备文件名为/dev/sd[a-p]，而虚拟机的设备可能为/dev/vd[a-p]</li>
+	<li>磁盘的第一个磁区主要记录了两个重要的信息，分别是： (1)主要开机记录区(Master Boot Record, 
+		MBR)：可以安装开机管理程序的地方，有446 bytes (1)分割表(partition table)：记录整颗硬盘分割的状态，有64 bytes；</li>
+	<li>磁盘的 MBR 分割方式中，主要与延伸分割最多可以有四个，逻辑分割的设备文件名号码，一定由5号开始；</li>
+	<li>如果磁盘容量大于 2TB 以上时，系统会自动使用 GPT 分割方式来处理磁盘分割。</li>
+	<li>GPT 分割已经没有延伸与逻辑分区的概念，你可以想像成所有的分割都是主分割！</li>
+	<li>某些操作系统要使用 GPT 分割时，必须要搭配 UEFI 的新型 BIOS 格式才可安装使用。</li>
+	<li>开机的流程由：BIOS--&gt;MBR--&gt;--&gt;boot loader--&gt;核心文件；</li>
+	<li>boot loader的功能主要有：提供菜单、加载核心、转交控制权给其他loader</li>
+	<li>boot loader可以安装的地点有两个，分别是 MBR 与 boot sector</li>
+	<li>Linux操作系统的文件使用目录树系统，与磁盘的对应需要有『挂载』的动作才行；</li>
+	<li>新手的简单分割，建议只要有/及swap两个分区即可</li>
+</ul>
+</div>
+<a id="ex"></a>
+<div class="block1">
+<h2>2.5 本章习题</h2>
+(要看答案请将鼠标移动到『答：』底下的空白处，按下左键圈选空白处即可察看)<br>
+实作题部分：
+<ul>
+	<li>请分析你的家用电脑，以你的硬件配备来计算可能产生的耗电量，最终再以计算出来的总瓦数乘上你可能开机的时间，
+	以推估出一年你可能会花费多少钱在你的这部主机上面？
+	<div class="blockex">
+		硬件里面包括 CPU/硬盘/主板/内存/显卡/屏幕等等都会消耗电力，同时电源供应器也会消耗一部份的电力。
+		若有实际测量工具时，请使用测量结果来计算。若无测量工具，请上网找出每个组件的最大理论消耗功率来计算。
+	</div></li>
+</ul>
+问答题部分：
+<ul>
+	<li>一部电脑主机是否只要 CPU 够快，整体速度就会提高？
+	<div class="blockex">
+		不见得！一部电脑系统的速度与整体电脑系统的运作有关，每个组件皆会影响电脑的速度！
+		这包括了内存、CPU、AGP与显卡速度，硬盘的速度以及其他相关的输入输出接口等等！
+		所以，如果您的系统是升级的，那么还得必须要注意各个旧组件是否可以保留，
+		或者旧的可以用的组件必须要舍弃！
+	</div></li>
+	<li>Linux 对于硬件的要求需要的考虑为何？是否一定要很高的配备才能安装 Linux ？
+	<div class="blockex">
+		Linux 对于硬件的要求是因『服务种类、服务范围及主机的角色』而定的。例如一部专门用来运算数值解析的
+		Linux 运算工作站，需要比较强大的 CPU 与足够的 RAM 来进行工作，至于一般家庭用的仅用来做为
+		ADSL 宽带分享器的 Linux 主机，则只要 P-III 等级的电脑，甚至 P-II 系列的等级，就可以很顺利的运行
+		Linux 了。
+	</div></li>
+	<li>一部好的主机在安装之前，最好先进行规划，哪些是必定需要注意的 Linux 主机规划事项？
+	<div class="blockex">
+		依据上一题的答案内容，我们知道 Linux 对于硬件的要求是『因地制宜』地！所以，要进行
+		Linux 的安装之前，一定需要规划 Linux 主机的定位与角色！因此，
+		Linux 的主机是否开放网络服务？这部主机的未来规划中，是否需要进行大量的运算？这
+		部主机是否需要提供很大的硬盘容量来服务客户端的使用？这部主机预计开放的网络服务内容？
+		等等，都是需要经过考量的，尤其未来的『套件选择安装』上面，更需要依据这些规划来设置。
+	</div></li>
+	<li>请写下下列配备中，在 Linux 的设备文件名：
+	<br>SATA硬盘：
+	<br>CDROM：
+	<br>打印机：
+	<br>软驱：
+	<div class="blockex">
+	<ul><li>SATA硬盘：/dev/sd[a-d]</li>
+	<li>CDROM：/dev/cdrom</li>
+	<li>打印机：/dev/lp[0-2]</li>
+	<li>软驱：/dev/fd[0-1]</li>
+	</ul>
+	</div></li>
+	<li>目前在个人电脑上面常见的硬盘与主板的连接接口有哪两个？
+	<div class="blockex">
+		有内置的 SATA 界面与外置式的 USB 界面
+	</div></li>
+</ul>
+</div>
+<a id="reference"></a>
+<div class="block1">
+<h2>2.6 参考数据与延伸阅读</h2>
+	<ul>
+	<li><a id="ps1"></a>GUID / GPT 磁盘分割表与 MBR 的限制 wiki 简介：<br>
+		<a href="http://zh.wikipedia.org/wiki/GUID%E7%A3%81%E7%A2%9F%E5%88%86%E5%89%B2%E8%A1%A8" target="_blank">http://zh.wikipedia.org/wiki/GUID磁盘分割表</a><br>
+		<a href="http://zh.wikipedia.org/wiki/%E5%85%A8%E5%B1%80%E5%94%AF%E4%B8%80%E6%A0%87%E8%AF%86%E7%AC%A6" target="_blank">http://zh.wikipedia.org/wiki/全局唯一标识符</a></li>
+	<li><a id="ps2"></a>与 UEFI 界面有关的介绍：<br>
+		Wiki 介绍：<a href="http://zh.wikipedia.org/wiki/%E7%B5%B1%E4%B8%80%E5%8F%AF%E5%BB%B6%E4%BC%B8%E9%9F%8C%E9%AB%94%E4%BB%8B%E9%9D%A2" target="_blank">http://zh.wikipedia.org/wiki/统一可延伸固件接口</a><br>
+		T客帮介绍：<a href="http://www.techbang.com/posts/4361-fully-understand-uefi-bios-theory-and-actual-combat-3-liu-xiudian" target="_blank">http://www.techbang.com/posts/4361-fully-understand-uefi-bios-theory-and-actual-combat-3-liu-xiudian</a><br>
+		黄明华先生的介绍：<a href="http://www.netadmin.com.tw/article_content.aspx?sn=1501070001&amp;jump=3" target="_blank">http://www.netadmin.com.tw/article_content.aspx?sn=1501070001&amp;jump=3</a></li>
+	</ul>
+</div>
+</div>	<!-- mainarea -->
+</div>  
+</body></html>

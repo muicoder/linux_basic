@@ -1,0 +1,622 @@
+/* 全部的风格一致设定值 ################################################################## */
+body {
+	font-family: 'Times New Roman', '微软雅黑', serif;
+	font-size: 12pt;
+	padding: 32px 0 27px 0 ;
+	margin: 0;
+	background-color: #eeeeee;
+	color: #000000;
+	background-attachment:fixed ;
+	line-height: 1.6;
+}
+
+a:link		{text-decoration: none; color: blue}
+a:visited	{text-decoration: none; color: blue}
+a:active	{text-decoration: none; color: blue}
+a:hover		{text-decoration: underline; color: #ff0000}
+
+
+/* 最上面那个不会动的方块设定值 ############################################################ */
+.toparea {
+	width: 100%;
+	min-width: 1000px;
+	height: 30px;
+	box-shadow: 2px 2px 2px 2px gray;
+	position: fixed;
+	top: 0;
+	left: 0;
+	/* background-color: #1E90FF;*/
+	/*background-color: rgb(85,123,205);*/
+	background-color: rgba(85,123,205,0.5);
+	color: white;
+	font-family: 'Times New Roman',  '微软雅黑', 'Impact';
+	font-size: 16pt;
+	font-weight: bold;
+	text-align: center;
+	line-height: 1.4;
+	z-index: 10;
+}
+.toparea ul {
+	position: relative;
+	padding: 0;
+	margin:  5px 0 0 10px;
+	display: inline-block;
+}
+.toparea li {
+	display: inline-block;
+	font-size: 9pt;
+	font-weight: normal;
+	font-family: 'Times New Roman', '微软雅黑';
+	border-top: 1px solid #191970;
+	border-left: 1px solid #191970;
+	border-right: 1px solid #191970;
+	border-radius: 6px 6px 0 0;
+	box-shadow: 2px 2px 2px 1px gray;
+	padding: 5px 5px 0 5px;
+	margin: -2px;
+	background-color: #87CECB;
+}
+.toparea a {
+	color: #696969;
+}
+.toparea li:hover {
+	transition: background-color 1s;
+	border-top: 1px solid black;
+	border-left: 1px solid black;
+	border-right: 1px solid black;
+	box-shadow: 2px 2px 2px 1px #191970;
+	background-color: white;
+	color: black;
+	padding-top: 10px;
+}
+.toparea a:hover {
+	color: darkblue;
+}
+li.topareali {
+	border-top: 1px solid black;
+	border-left: 1px solid black;
+	border-right: 1px solid black;
+	box-shadow: none;
+	background-color: white;
+	padding-top: 10px;
+	padding-bottom: 4px;
+	color: black;
+}
+.topareali a {
+	color: darkblue;
+	font-weight: bold;
+}
+
+/* 左边的往前一页功能 ############################################################ */
+.leftarea {
+	width: 40px;
+	height: 30px;
+	position: fixed;
+	top: 50%;
+	left: 0;
+	bottom: 50%;
+	background-color: rgba(85,123,205,0.2);
+	color: white;
+	font-family: 'Times New Roman',  '微软雅黑', 'Impact';
+	font-size: 16pt;
+	text-shadow: 2px 2px 2px gray;
+	font-weight: bold;
+	text-align: center;
+	border-radius: 0 10px  0 0 ;
+	z-index: 10;
+}
+
+.leftarea a {
+	color: white;
+	text-decoration: none;
+	display: block;
+}
+
+.leftarea a:hover {
+	color: blue;
+	text-shadow: 2px 2px 2px black;
+	background-color: #eeeeee ;
+}
+
+/* 右边的往后一页功能 ############################################################ */
+.rightarea {
+	width: 40px;
+	height: 30px;
+	position: fixed;
+	top: 50%;
+	right: 0;
+	bottom: 50%;
+	background-color: rgba(85,123,205,0.2);
+	color: white;
+	font-family: 'Times New Roman',  '微软雅黑', 'Impact';
+	font-size: 16pt;
+	text-shadow: 2px 2px 2px gray;
+	font-weight: bold;
+	text-align: center;
+	z-index: 10;
+	border-radius: 10px 0 0 0 ;
+}
+
+.rightarea a {
+	color: white;
+	text-decoration: none;
+	display: block;
+}
+
+.rightarea a:hover {
+	color: blue;
+	text-shadow: 2px 2px 2px black;
+	background-color: #eeeeee ;
+}
+
+
+/* 最底下那个不会动的版权声明页面 ######################################################################## */
+.bottomarea {
+	width: 100%;
+	min-width: 1000px;
+	height: 25px;
+	box-shadow: 0px 0px 2px 2px gray;
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	/* background-color: #1E90FF; */
+	background-color: rgb(85,123,205);
+	color: #AFEEEE;
+	font-size: 10pt;
+	font-weight: normal;
+	text-align: center;
+	z-index: 10;
+}
+.bottomarea ul {
+	position: relative;
+	padding: 0;
+	margin:  0;
+	display: inline-block;
+}
+.bottomarea li {
+	display: inline-block;
+	font-size: 9pt;
+	font-weight: normal;
+	font-family: 'Times New Roman', '微软雅黑';
+	border-left: 1px solid #191970;
+	border-right: 1px solid #191970;
+	border-bottom: 1px solid #191970;
+	border-radius: 0 0 6px 6px;
+	box-shadow: 0px 0px 2px 2px gray;
+	padding: 0px 5px 0px 5px;
+	margin: -2px;
+	background-color: #87CECB;
+}
+.bottomarea a {
+	color: #AFEEEE ;
+}
+.bottomarea li a {
+	color: #696969;
+}
+.bottomarea li:hover {
+	transition: background-color 1s;
+	border-left: 1px solid black;
+	border-right: 1px solid black;
+	border-bottom: 1px solid black;
+	box-shadow: 0px 0px 2px 1px #191970;
+	background-color: white;
+	color: black;
+	padding-bottom: 5px;
+}
+.bottomarea a:hover {
+	color: darkblue;
+}
+
+
+/* 作为两个板块置中排版 的必要资料而以～ ######################################################## */
+.tablearea {
+	width: 1000px;
+	min-height: 650px;
+	padding: 0;
+	margin: 0 auto 0 auto;
+}
+
+
+/* 左侧的那个超连结部分的资料！先针对主选单来设计 ############################################### */
+.nav {
+	width: 140px;
+	height: 540px;
+	float: left; 
+	border: 1px solid gray;
+	position: relative ;
+	margin: 10px 10px 10px 0px; 
+	background-color: #ffffff;
+	box-shadow:  0px 0px 2px 2px gray;
+	border-radius: 7px ;
+	z-index:1; 
+}
+.nav ul {
+	position: relative;
+	padding: 0;
+	margin-left:  5px;
+	display: block;
+}
+.nav li {
+	display: block;
+	font-size: 10pt;
+	font-weight: normal;
+	font-family: 'Times New Roman', '微软雅黑';
+	width: 115px;
+	border-left: 10px solid #8a2be2; 
+	border-right: 1px solid #ba55d3;
+	border-bottom: 1px solid #ba55d3;
+	border-top: 1px solid #ba55d3;
+	border-radius: 0 5px 0 0;
+	padding: 3px 0px 0px 5px;
+	margin: 0px;
+	background-color: #dda0dd;
+}
+.nav li a {
+	color: white;
+	display: block;
+}
+.nav li:hover {
+	transition: background-color 1s;
+	border-left: 10px solid #4b0082; 
+	border-right: 1px solid #4b0082;
+	border-bottom: 1px solid #4b0082;
+	border-top: 1px solid #4b0082;
+	background-color: #8a2be2;
+}
+.nav li a:hover {
+	color: white;
+	text-shadow: 1px 1px 0px black;
+}
+
+/* 开始设计子选单啰！ */
+.nav ul li ul {
+	visibility: hidden;
+	min-width: 250px;
+	width: auto;
+	height: auto;
+	position: absolute;
+	float: left; 
+	border: 1px solid gray;
+	margin: -20px 0px 0px 100px; 
+	background-color: #f3f3f3;
+	box-shadow:  5px 5px 3px 3px gray;
+	padding: 10px 0 10px 10px;
+	border-radius: 7px ;
+	z-index:1; 
+	overflow: auto;
+	opacity: 0.95;
+}
+.nav ul li ul li {
+	overflow: hidden;
+	width: 220px;
+	height: 0;
+	transition: height 0.2s ease-in, visibility 0.2s;
+}
+.nav ul li:hover ul li {
+	height: 20px;
+}
+.nav ul li:hover ul {
+	visibility: visible;
+}
+.nav ul ul li:hover {
+	display: block;
+	border-left: 10px solid #4b0082; 
+	background-color: gray;
+}
+li.nav_more {
+	background-color: #BA55D3;
+	border-color: #8a2be2;
+}
+
+
+/* 开始设计主要的教学页面部分。这就是主要出现的咚咚！ ####################################3  */
+.mainarea {
+	width: 840px;
+	text-align: left;
+	line-height: 1.6; 
+	position: relative;
+	float: left;
+	color: #252525;
+}
+
+.block1	{
+	padding: 0 20px 10px 40px; 
+	/* text-align: justify; */
+	text-align: left; 
+	background-color: white;
+	border: 1px solid #ffcccc;
+	border-radius: 5px;
+	box-shadow: 0px 0px 3px 3px gray;
+	margin-top: 10px;
+	position: relative;
+}
+
+.block1 h1 {
+	font-size:18pt;
+	font-family: 'Times New Roman', '微软雅黑', 'Times', serif; 
+	text-align: center;
+	color: white;
+	background-color: #EE82EE;
+	margin: 5px -10px 2px -35px;
+	padding: 5px;
+	border: 1px solid gray;
+	box-shadow:  2px 2px 2px 1px gray;
+	text-shadow: 2px 2px 1px gray;
+	border-radius: 20px 20px 0 0 ;
+}
+.block1 h2 {
+	font-size:16pt;
+	font-family: 'Times New Roman', '微软雅黑', 'Times', serif; 
+	text-align: left;
+	color: #0000bb ;
+	background-color: #E6E6FA;
+	margin: 5px 0px 15px -30px;
+	padding: 5px 5px 0px 10px;
+	border: 1px solid gray;
+	box-shadow:  2px 2px 2px 0px gray;
+	text-shadow: 2px 2px 1px gray;
+	border-radius: 0px 10px 0 0 ;
+}
+.abstract {
+	background-color: #ffcccc; 
+	border: 1px solid #ffcccc;
+	padding: 10px 10px 0 10px;
+	font: 10pt "微软雅黑", serif; 
+	color: #000099; 
+	text-align: justify;
+	border-radius: 5px;
+	box-shadow:  0 0 2px 2px gray;
+	margin-left: -20px;
+}
+.abstract p {
+	margin-top: 0px;
+}
+
+.links {
+	color: #0000BB;
+	margin-left: -50px;
+}
+.links ul {
+	list-style-type: none;
+	font: 15pt "微软雅黑", serif; 
+	color: #0000BB; 
+	font-weight: bold;
+}
+.links ul ul {
+	font: 13pt "微软雅黑", serif; 
+	display: block;
+}
+.links a:visited {
+	color: #666666;
+}
+.block2	{
+	padding: 0px 5px 5px 20px; 
+	/* text-align: justify; */
+	text-align: left; 
+	border-top: 1px solid gray;
+	border-left: 1px solid gray;
+	border-bottom: 1px solid gray;
+	position: relative;
+}
+.block2 h2 {
+	font-size:14pt;
+	font-family: 'Times New Roman', '微软雅黑', 'Times', serif; 
+	text-align: left;
+	color: #0000dd ;
+	background-color: #E6E6FA;
+	margin: -1px 0px 10px -21px;
+	padding: 5px 5px 0px 10px;
+	border: 1px solid gray;
+	box-shadow:  1px 1px 2px 0px gray;
+	text-shadow: 1px 1px 1px gray;
+	border-radius: 0px 0px 0 0 ;
+}
+.gototop {
+	display: block;
+	width: 30px;
+	background-color: #E6E6FA;
+	font-weight: bold;
+	position: absolute;
+	left: 0px;
+	bottom: 0px;
+	padding: 2px;
+	border: 1px solid gray;
+	margin: 2px;
+	z-index: 0;
+}
+.gototop a {
+	display: block;
+}
+
+ul.toplist {
+	margin-left:0; 
+	padding-left:0; 
+	color:#000088; 
+	font-weight: bold; 
+	list-style-type: square; 
+	border-top: 1px solid gray; 
+	margin-top: 30px;
+}
+
+table.exam {
+	width: 95%; 
+	border: 1px solid black; 
+	border-collapse: collapse; 
+	padding: 5px;
+}
+table.exam td {
+	padding: 5px;
+}
+
+table.exam td div {
+	margin: 10px 0 10px 25px; 
+	width: 95%;
+}
+
+table.news {
+	width: 97%;
+	border: 1px solid gray;
+	background-color: lightyellow;
+	box-shadow: 2px 2px 2px 2px gray;
+	padding: 0px;
+	margin: 0;
+	border-collapse:collapse;
+}
+table.news tr {
+	margin: 0;
+	padding: 0;
+	border-width: 0;
+}
+table.news tr.title1 {
+	background-color: lightblue;
+	text-align:center;
+	border-width: 0;
+}
+table.news td {
+	margin: 5px;
+	padding: 5px;
+	border: 1px solid gray;
+}
+table.news tr:hover {
+	/* text-shadow: 1px 1px 1px black;*/
+	background-color: lightblue;
+	color: black;
+}
+
+table.news .theader {
+	background-color: lightblue;
+	text-align: center;
+}
+
+table.news .tcenter {
+	text-align: center;
+}
+
+.text_import1	{
+	color: #000088; 
+	font-weight: bold;
+}
+.text_import2	{
+	color: #000088; 
+	font-weight: normal;
+}
+.text_vbird	{
+	color: #000088; 
+	font-weight: normal;
+	font-style: italic;
+}
+.text_history	{
+	font:  10pt "微软雅黑", serif; 
+	color: #000066; 
+}
+.text_date	{
+	font:  10pt "微软雅黑", serif; 
+	color: #3333FF; 
+}
+table.term	{
+	width: 650px; 
+	background-color: #000000;
+	border-style: ridge;
+	border-width:3px;
+	border-color: #FFCCCC; 
+	margin:10px 0px;
+}
+table.term td	{
+	font:  10pt  Fixedsys, "微软雅黑", serif; 
+	color: #FFFFFF; 
+}
+table.term td pre	{
+	font:  10pt  Fixedsys, "微软雅黑", serif; 
+	color: #FFFFFF; 
+	margin-top: 2px; margin-bottom: 2px;
+}
+.term_hd	{
+	font:  10pt  Fixedsys, "微软雅黑", serif; 
+	color: #BBBBBB; 
+}
+.term_note	{
+	font:  10pt  Fixedsys, "微软雅黑", serif; 
+	color: #777777; 
+	font-weight: normal;
+}
+.term_note_b	{
+	font:  10pt  Fixedsys, "微软雅黑", serif; 
+	color: #FF77FF; 
+	font-weight: bolder;
+}
+.term_command	{
+	font:  10pt  Fixedsys, "微软雅黑", serif; 
+	color: yellow ; 
+	font-weight: bolder;
+}
+.term_write	{
+	font:  10pt  Fixedsys, "微软雅黑", serif; 
+	color: yellow ; 
+	font-weight: normal;
+ }
+.term_say	{
+	font:  10pt  Fixedsys, "微软雅黑", serif; 
+	color: #FF6666; 
+	font-weight: normal;
+}
+.term_white	{
+	font:  10pt  Fixedsys, "微软雅黑", serif; 
+	color: #000000; 
+	background-color: #FFFFFF;
+}
+
+.vbirdface {
+	text-align: left;
+	position: relative;
+	width: 80%;
+	margin-left: 12%;
+	font-size: 10pt;
+	color: #009000;
+	border-right: none;
+	border-bottom: none;
+}
+
+.illus {
+	padding-left: 25px;
+}
+.illus > ul {
+	list-style-type: circle;
+	margin-left: 9px;
+	margin-bottom: 0px;
+	padding: 0;
+}
+.illus > ul > li {
+	color: #000088; 
+	font-weight: normal;
+}
+.illus ol {
+	margin-left: 9px;
+	margin-bottom: 0px;
+	padding: 0;
+}
+.illus p {
+	margin: 10px;
+}
+
+ul.mylist li, ol.mylist li {
+	margin-top: 10px; 
+}
+/*
+		3. CSS 语法的 Style 风格：
+			text_import1	内文部分的特重要文本！
+			text_import2	内文部分的普通重要文本！
+			text_vbird	鸟哥的额外说明部分文本
+			text_history	网页中，变动的历史纪录的日期文本
+			text_date	
+			block1		大标题下的文本叙述之缩排
+			block2		小标题下的文本叙述之缩排
+			vbirdface1	鸟哥的说明最上方的一些标示
+			vbirdface2	说明的下方标签在 vbirdface1, 2 之间，插入我所想要讲的话！
+*/
+table.term2		{width: 350px; background-color: #000000;
+			 border-style:groove;border-width:3px;border-color: #FFCCCC; margin:10px 0px;}
+*.list1		{list-style-type: square ; padding-left:0; margin-bottom:0 }
+*.listol	{                          padding-left:0; margin-bottom:0 }
+*.blockex	{padding: 10px 0px  10px 25px ; font: 9pt "微软雅黑", serif; color: #FFFFFF ; text-align: left }
+*.fontwidth	{font-family: '微软雅黑' }
+*.fontwidth td 	{font-family: '微软雅黑' ; text-align: justify; }

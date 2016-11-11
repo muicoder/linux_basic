@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	
+	<meta name="Author" content="VBird, 鸟哥">
+	<meta name="Description" content="注册表的分析啦！">
+	<title>鸟哥的 Linux 私房菜 -- 第十八章、认识与分析注册表</title>
+	<style type="text/css">
+	</style>
+	<link href="./vbird_files/style_2013.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+<div class="tablearea">
+<div class="mainarea">
+<div class="block1">
+<!-- 本文的档头部分 -->
+<h1>第十八章、认识与分析注册表</h1>
+<div style="text-align:right">
+	<span class="text_history">最近更新日期：2015/08/20</span>
+</div>
+<!-- 本文的档头部分 -->
+<div class="abstract">
+	<p>当你的 Linux 系统出现不明原因的问题时，很多人都告诉你，你要查阅一下注册表才能够知道系统出了什么问题了，所以说，
+	了解注册表是很重要的事情呢。注册表可以记录系统在什么时间、哪个主机、哪个服务、出现了什么消息等信息，
+	这些信息也包括用户识别数据、系统故障排除须知等信息。如果你能够善用这些注册表信息的话，你的系统出现错误时，
+	你将可以在第一时间发现，而且也能够从中找到解决的方案，而不是昏头转向的乱问人呢。
+	此外，注册表所记录的信息量是非常大的，要人眼分析实在很困难。此时利用 shell script 
+	或者是其他软件提供的分析工具来处理复杂的注册表，可以帮助你很多很多喔！</p>
+</div>
+<!-- 本文的链接区部分 -->
+<div class="links">
+<ul>
+	<li><a href="0570syslog.html#whatis_syslog">18.1 什么是注册表</a>：
+	<ul>
+		<li><a href="0570syslog.html#whatis_syslog_1">18.1.1 CentOS 7 注册表简易说明</a>：
+		<a href="0570syslog.html#whatis_syslog_im">重要性</a>, 
+		<a href="0570syslog.html#whatis_syslog_file">常见文件名</a>,
+		<a href="0570syslog.html#whatis_syslog_daemon">服务与程序</a>,
+		<a href="0570syslog.html#whatis_syslog_new">systemd-journald</a></li>
+		<li><a href="0570syslog.html#whatis_syslog_2">18.1.2 注册表内容的一般格式</a></li>
+	</ul></li>
+	<li><a href="0570syslog.html#syslogd">18.2 rsyslog.service ：记录注册表的服务</a>
+	<ul>
+		<li><a href="0570syslog.html#syslogd_conf">18.2.1 rsyslog.service 的设置档： /etc/rsyslog.conf</a>, 
+			<a href="0570syslog.html#syslog_conf_default">缺省的 rsyslog.conf 内容</a></li>
+		<li><a href="0570syslog.html#syslogd_secure">18.2.2 注册表的安全性设置</a></li>
+		<li><a href="0570syslog.html#syslogd_server">18.2.3 注册表服务器的设置</a></li>
+	</ul></li>
+	<li><a href="0570syslog.html#rotate">18.3 注册表的轮替 (logrotate)</a>
+	<ul>
+		<li><a href="0570syslog.html#rotate_config">18.3.1 logrotate 的设置档</a></li>
+		<li><a href="0570syslog.html#rotate_command">18.3.2 实际测试 logrotate 的动作</a></li>
+		<li><a href="0570syslog.html#rotate_user">18.3.3 自订注册表的轮替功能</a></li>
+	</ul></li>
+	<li><a href="0570syslog.html#journal">18.4 systemd-journald.service 简介</a>：
+	<ul>
+		<li><a href="0570syslog.html#journalctl">18.4.1 使用 journalctl 观察登录信息</a></li>
+		<li><a href="0570syslog.html#logger">18.4.2 logger 指令的应用</a></li>
+		<li><a href="0570syslog.html#journal_save">18.4.3 保存 journal 的方式</a></li>
+	</ul></li>
+	<li><a href="0570syslog.html#analyze">18.5 分析注册表</a>
+	<ul>
+		<li><a href="0570syslog.html#logwatch">18.5.1 CentOS 缺省提供的 logwatch</a></li>
+		<li><a href="0570syslog.html#analyze_vbird">18.5.2 鸟哥自己写的注册表分析工具：</a></li>
+	</ul></li>
+	<li><a href="0570syslog.html#hint">18.6 重点回顾</a></li>
+	<li><a href="0570syslog.html#ex">18.7 本章习题练习</a></li>
+	<li><a href="0570syslog.html#reference">18.8 参考数据与延伸阅读</a></li>
+</ul>
+</div>
+</div>
+<!-- 本文的正式部分 -->
+<a id="whatis_syslog"></a>
+<div class="block1">
+<h2>18.1 什么是注册表</h2>
+	<p>『<span class="text_import2">详细而确实的分析以及备份系统的注册表</span>』是一个系统管理员应该要进行的任务之一。
+	那么什么是注册表呢？简单的说，就是<span class="text_import2">记录系统活动信息的几个文件，
+	例如：何时、何地 (来源 IP)、何人 (什么服务名称)、做了什么动作 (消息登录啰)</span>。
+	换句话说就是：<span class="text_import2">记录系统在什么时候由哪个进程做了什么样的行为时，发生了何种的事件等等</span>。</p>
+	<a id="whatis_syslog_1"></a>
+	<div class="block2"><div class="gototop"><a href="0570syslog.html#top">Top</a></div>
+	<h2>18.1.1 CentOS 7 注册表简易说明</h2>
+		<p>要知道的是，我们的 Linux 主机在背景之下有相当多的 daemons 同时在工作着，这些工作中的进程总是会显示一些消息，
+		这些显示的消息最终会被记载到注册表当中啦。也就是说，记录这些系统的重要消息就是注册表的工作啦！</p>
+		<a id="whatis_syslog_im"></a>
+		<ul class="toplist"><li>注册表的重要性</li></ul>
+		<p>为什么说注册表很重要，重要到系统管理员需要随时注意他呢？我们可以这么说：</p>
+		<div class="illus">
+		<ul><li>解决系统方面的错误：</li></ul>
+		<p>用 Linux 这么久了，你应该偶而会发现系统可能会出现一些错误，包括硬件捉不到或者是某些系统服务无法顺利运作的情况。
+		此时你该如何是好？由于系统会将硬件侦测过程记录在注册表内，你只要透过查找注册表就能够了解系统作了啥事！
+		并且由<a href="0440processcontrol.html">第十六章我们也知道 SELinux</a> 
+		与注册表的关系更加的强烈！所以啰，查找注册表可以克服一些系统问题啦！</p>
+		<ul><li>解决网络服务的问题：</li></ul>
+		<p>你可能在做完了某些网络服务的设置后，却一直无法顺利启动该服务，此时该怎办？去庙里面拜拜抽签吗？
+		三太子大大可能无法告诉你要怎么处理呢！由于网络服务的各种问题通常都会被写入特别的注册表，
+		其实你只要查找注册表就会知道出了什么差错，还不需要请示三太子大大啦！举例来说，如果你无法启动邮件服务器 (postfix)，
+		那么查找一下 /var/log/maillog 通常可以得到不错的解答！</p>
+		<ul><li>过往事件记录簿：</li></ul>
+		<p>这个东西相当的重要！例如：你发现 WWW 服务 (httpd 软件) 在某个时刻流量特别大，你想要了解为什么时，
+		可以透过注册表去找出该时段是哪些 IP 在连接与查找的网页数据为何，就能够知道原因。
+		此外，万一哪天你的系统被入侵，并且被利用来攻击他人的主机，由于被攻击主机会记录攻击者，因此你的 IP 
+		就会被对方记录。这个时候你要如何告知对方你的主机是由于被入侵所导致的问题，
+		并且协助对方继续往恶意来源追查呢？呵呵！此时注册表可是相当重要的呢！</p>
+		</div>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		所以我们常说『天助自助者』是真的啦！你可以透过 (1)察看屏幕上面的错误消息与
+		(2)注册表的错误信息，几乎可以解决大部分的 Linux 问题！
+		</fieldset><br>
+		<a id="whatis_syslog_file"></a>
+		<ul class="toplist"><li>Linux 常见的注册表文件名</li></ul>
+		<p>注册表可以帮助我们了解很多系统重要的事件，包括登录者的部分信息，因此<span class="text_import2">注册表的权限通常是设置为仅有 root 能够读取而已</span>。
+		而由于注册表可以记载系统这么多的详细信息，所以啦，一个有经验的主机管理员会随时随地查阅一下自己的注册表，
+		以随时掌握系统的最新脉动！那么常见的几个注册表有哪些呢？一般而言，有下面几个：</p>
+		<ul>
+		<li><span class="text_import2" style="font-family:&#39;细明体&#39;">/var/log/boot.log</span>：<br>
+		开机的时候系统核心会去侦测与启动硬件，接下来开始各种核心支持的功能启动等。这些流程都会记录在 /var/log/boot.log 里面哩！
+		不过这个文件只会存在这次开机启动的信息，前次开机的信息并不会被保留下来！<br><br></li>
+		<li><span class="text_import2" style="font-family:&#39;细明体&#39;">/var/log/cron</span>：<br>
+		还记得<a href="0430cron.html">第十五章例行性工作调度</a>吧？你的 crontab 调度有没有实际被进行？
+		进行过程有没有发生错误？你的 /etc/crontab 是否撰写正确？在这个注册表内查找看看。<br><br></li>
+		<li><span class="text_import2" style="font-family:&#39;细明体&#39;">/var/log/dmesg</span>：<br>
+		记录系统在开机的时候核心侦测过程所产生的各项信息。由于 CentOS 缺省将开机时核心的硬件侦测过程取消显示，
+		因此额外将数据记录一份在这个文件中；<br><br></li>
+		<li><span class="text_import2" style="font-family:&#39;细明体&#39;">/var/log/lastlog</span>：<br>
+		可以记录系统上面所有的帐号最近一次登录系统时的相关信息。<a href="0410accountmanager.html#uselinux_find">第十三章讲到的 lastlog</a> 
+		指令就是利用这个文件的记录信息来显示的。<br><br></li>
+		<li><span class="text_import2" style="font-family:&#39;细明体&#39;">/var/log/maillog 或 /var/log/mail/*</span>：<br>
+		记录邮件的往来信息，其实主要是记录 postfix (SMTP 协定提供者) 与 dovecot (POP3 协定提供者) 所产生的消息啦。
+		SMTP 是发信所使用的通信协定， POP3 则是收信使用的通信协定。 postfix 与 dovecot 则分别是两套达成通信协定的软件。
+		<br><br></li>
+		<li><span class="text_import2" style="font-family:&#39;细明体&#39;">/var/log/messages</span>：<br>
+		这个文件相当的重要，几乎系统发生的错误消息 (或者是重要的信息) 都会记录在这个文件中；
+		如果系统发生莫名的错误时，这个文件是一定要查阅的注册表之一。<br><br></li>
+		<li><span class="text_import2" style="font-family:&#39;细明体&#39;">/var/log/secure</span>：<br>
+		基本上，只要牵涉到『需要输入帐号密码』的软件，那么当登录时 (不管登录正确或错误) 都会被记录在此文件中。
+		包括系统的 login 程序、图形接口登录所使用的 gdm 程序、 su, sudo 等程序、还有网络连接的 ssh, telnet 等程序，
+		登录信息都会被记载在这里；<br><br></li>
+		<li><span class="text_import2" style="font-family:&#39;细明体&#39;">/var/log/wtmp, /var/log/faillog</span>：<br>
+		这两个文件可以记录正确登录系统者的帐号信息 (wtmp) 与错误登录时所使用的帐号信息 (faillog) ！
+		我们在<a href="0320bash.html#last">第十章谈到的 last</a> 就是读取 wtmp 来显示的，
+		这对于追踪一般帐号者的使用行为很有帮助！<br><br></li>
+		<li><span class="text_import2" style="font-family:&#39;细明体&#39;">/var/log/httpd/*, /var/log/samba/*</span>：<br>
+		不同的网络服务会使用它们自己的注册表案来记载它们自己产生的各项消息！上述的目录内则是个别服务所制订的注册表。</li>
+		</ul>
+		<p>常见的注册表就是这几个，但是不同的 Linux distributions ，通常注册表的文件名不会相同 
+		(除了 /var/log/messages 之外 )。所以说，你还是得要查阅你 Linux 主机上面的注册表设置数据，
+		才能知道你的注册表主要文件名喔！</p>
+		<a id="whatis_syslog_daemon"></a>
+		<ul class="toplist"><li>注册表所需相关服务 (daemon) 与程序</li></ul>
+		<p>那么这些注册表是怎么产生的呢？基本上有两种方式，一种是由软件开发商自行定义写入的注册表与相关格式，
+		例如 WWW 软件 apache 就是这样处理的。另一种则是由 Linux distribution 提供的注册表管理服务来统一管理。
+		你只要将消息丢给这个服务后，他就会自己分门别类的将各种消息放置到相关的注册表去！CentOS 提供 rsyslog.service
+		这个服务来统一管理注册表喔！</p>
+		<p>不过要注意的是，如果你任凭注册表持续记录的话，由于系统产生的信息天天都有，那么你的注册表的容量将会长大到无法无天～
+		如果你的注册表容量太大时，可能会导致大文件读写效率不佳的问题 (因为要从磁盘读入内存，越大的文件消耗内存量越多)。
+		所以啰，你需要对注册表备份与更新。那...需要手动处理喔？当然不需要，我们可以透过 logrotate (注册表轮替) 
+		这玩意儿来自动化处理注册表容量与更新的问题喔！</p>
+		<p>所谓的 logrotate 基本上，就是将旧的注册表更改名称，然后创建一个空的注册表，如此一来，
+		新的注册表将重新开始记录，然后只要将旧的注册表留下一阵子，嗯！那就可以达到将注册表『轮转』的目的啦！
+		此外，如果旧的记录 (大概要保存几个月吧！) 保存了一段时间没有问题，那么就可以让系统自动的将他砍掉，
+		免得占掉很多宝贵的硬盘空间说！</p>
+		<p>总结一下，针对注册表所需的功能，我们需要的服务与程序有：</p>
+		<ul>
+		<li><span class="text_import1">systemd-journald.service</span>：最主要的消息收受者，由 systemd 提供的；</li>
+		<li><span class="text_import1">rsyslog.service</span>：主要登录系统与网络等服务的消息；</li>
+		<li><span class="text_import1">logrotate</span>：主要在进行注册表的轮替功能。</li>
+		</ul>
+		<p>由于我们着眼点在于想要了解系统上面软件所产生的各项信息，因此本章主要针对 rsyslog.service 与 logrotate 来介绍。
+		接着下来我们来谈一谈怎么样规划这两个玩意儿。就由 rsyslog.service 这支程序先谈起吧！毕竟得先有注册表，才可以进行
+		logrotate 呀！您说是吧！</p>
+		<a id="whatis_syslog_new"></a>
+		<ul class="toplist"><li>CentOS 7.x 使用 systemd 提供的 journalctl 日志管理</li></ul>
+		<p>CentOS 7 除了保有既有的 rsyslog.service 之外，其实最上游还使用了 systemd 自己的注册表日志管理功能喔！他使用的是 systemd-journald.service 
+		这个服务来支持的。基本上，系统由 systemd 所管理，那所有经由 systemd 启动的服务，如果再启动或结束的过程中发生一些问题或者是正常的消息，
+		就会将该消息由 systemd-journald.service 以二进位的方式记录下来，之后再将这个消息发送给 rsyslog.service 作进一步的记载。</p>
+		<p>systemd-journald.service 的记录主要都放置于内存中，因此在访问方面性能比较好～我们也能够透过 journalctl 以及 systemctl status unit.service 来查看各个不同服务的注册表！
+		这有个好处，就是注册表可以随着个别服务让你查阅，在单一服务的处理上面，要比跑到 /var/log/messages 去大海捞针来的简易很多！
+		不过，因为 system-journald.service 里面的很多观念还是沿用 rsyslog.service 相关的信息，所以，本章还是先从 rsyslog.service 先谈起，
+		谈完之后再以 journalctl 进一步了解 systemd 是怎么去记录注册表日志功能的呦！</p>
+	<br></div><br>
+	<a id="whatis_syslog_2"></a>
+	<div class="block2"><div class="gototop"><a href="0570syslog.html#top">Top</a></div>
+	<h2>18.1.2 注册表内容的一般格式</h2>
+		<p>一般来说，系统产生的消息经过记录下来的数据中，每条消息均会记录底下的几个重要数据：</p>
+		<ul class="text_import2">
+		<li>事件发生的日期与时间；</li>
+		<li>发生此事件的主机名称；</li>
+		<li>启动此事件的服务名称 (如 systemd, CROND 等) 或指令与函数名称 (如 su, login..)；</li>
+		<li>该消息的实际数据内容。</li>
+		</ul>
+		<p>当然，这些信息的『详细度』是可以修改的，而且，这些信息可以作为系统调试之用呢！
+		我们拿登录时一定会记载帐号信息的 /var/log/secure 为例好了：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">cat /var/log/secure</span>
+<span style="text-decoration: underline">Aug 17 18:38:06 study login: pam_unix(login:session): session opened for user root by LOGIN(uid=0)
+Aug 17 18:38:06 study login: ROOT LOGIN ON tty1</span>
+Aug 17 18:38:19 study login: pam_unix(login:session): session closed for user root
+Aug 18 23:45:17 study sshd[18913]: Accepted password for dmtsai from 192.168.1.200 port 41524 ssh2
+Aug 18 23:45:17 study sshd[18913]: pam_unix(sshd:session): session opened for user dmtsai by (uid=0)
+Aug 18 23:50:25 study sudo: dmtsai : TTY=pts/0 ; PWD=/home/dmtsai ; USER=root ; COMMAND=/bin/su -
+Aug 18 23:50:25 study su: pam_unix(su-l:session): session opened for user root by dmtsai(uid=0)
+<span class="term_say">|--日期/时间---|--H--|-服务与相关函数-|-----------消息说明------&gt;</span>
+</pre></td></tr></tbody></table>
+		<p>我们拿第一笔数据 (共两行) 来说明好了，该数据是说：『<span class="text_import2">在 08/17 的 18:38 左右，在名为 study 
+		的这部主机系统上，由 login 这个程序产生的消息，内容显示 root 在 tty1 登录了，而相关的权限给予是透过 pam_unix 
+		模块处理的 (共两行数据)</span>。』有够清楚吧！那请您自行翻译一下后面的几条消息内容是什么喔！</p>
+		<p>其实还有很多的信息值得查阅的呢！尤其是 /var/log/messages 的内容。记得一个好的系统管理员，
+		要常常去『巡视』注册表的内容喔！尤其是发生底下几种情况时：</p>
+		<ul>
+		<li>当你觉得系统似乎不太正常时；</li>
+		<li>某个 daemon 老是无法正常启动时；</li>
+		<li>某个用户老是无法登录时；</li>
+		<li>某个 daemon 运行过程老是不顺畅时；</li>
+		</ul>
+		<p>还有很多啦！反正觉得系统不太正常，就得要查找查找注册表就是了。</p>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		提供一个鸟哥常做的检查方式。当我老是无法成功的启动某个服务时，我会在最后一次启动该服务后，立即检查注册表，
+		先 (1)找到现在时间所登录的信息『第一字段』； (2)找到我想要查找的那个服务『第三字段』，
+		(3)最后再仔细的查阅第四字段的信息，来借以找到错误点。
+		</fieldset><br>
+		<p>另外，不知道你会不会觉得很奇怪？为什么注册表就是登录本机的数据啊～那怎么注册表格式中，第二个字段项目是『主机名称』啊？
+		这是因为注册表可以做成注册表服务器，可以收集来自其他服务器的注册表数据喔！所以啰，为了了解到该消息主要是来自于哪一部主机，
+		当然得要有第二个字段项目说明该信息来自哪一部主机名称啰！</p>
+	<br></div>
+</div>
+<a id="syslogd"></a>
+<div class="block1">
+<h2>18.2 rsyslog.service ：记录注册表的服务</h2>
+	<p>上一小节提到说 Linux 的注册表主要是由 rsyslog.service 在负责，那么你的 Linux
+	是否有启动 rsyslog 呢？而且是否有设置开机时启动呢？呵呵！检查一下先：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">ps aux | grep rsyslog</span>
+USER  PID %CPU %MEM    VSZ   RSS TTY  STAT START  TIME COMMAND
+root  750  0.0  0.1 208012  4732 ?    Ssl  Aug17  0:00 <span class="term_write">/usr/sbin/rsyslogd -n</span>
+<span class="term_say"># 瞧！确实有启动的！daemon 运行文件名为 rsyslogd 喔！</span>
+[root@study ~]# <span class="term_command">systemctl status rsyslog.service</span>
+rsyslog.service - System Logging Service
+   Loaded: loaded (/usr/lib/systemd/system/rsyslog.service; <span class="term_write">enabled</span>)
+   Active: <span class="term_write">active (running)</span> since Mon 2015-08-17 18:37:58 CST; 2 days ago
+ Main PID: 750 (rsyslogd)
+   CGroup: /system.slice/rsyslog.service
+           └─750 /usr/sbin/rsyslogd -n
+<span class="term_say"># 也有启动这个服务，也有缺省开机时也要启动这个服务！OK！正常没问题！！</span>
+</pre></td></tr></tbody></table>
+	<p>看到 rsyslog.service 这个服务名称了吧？所以知道他已经在系统中工作啰！好了，既然本章主要是讲注册表的服务，
+	那么 rsyslog.service 的设置档在哪里？如何设置？如果你的 Linux 主机想要当作整个区网的注册表服务器时，又该如何设置？
+	底下就让我们来玩玩这玩意！</p>
+	<a id="syslogd_conf"></a>
+	<div class="block2"><div class="gototop"><a href="0570syslog.html#top">Top</a></div>
+	<h2>18.2.1 rsyslog.service 的设置档：/etc/rsyslog.conf</h2>
+		<p>什么？注册表还有设置档？喔！不是啦～是 rsyslogd 这个 daemon 的设置档啦！
+		我们现在知道 rsyslogd 可以负责主机产生的各个信息的登录，而这些信息本身是有『严重等级』之分的，
+		而且，这些数据最终要发送到哪个文件去是可以修改的呢，所以我们才会在一开头的地方讲说，
+		每个 Linux distributions 放置的注册表文件名可能会有所差异啊！</p>
+		<p>基本上， rsyslogd 针对各种服务与消息记录在某些文件的设置档就是 <span class="text_import2">/etc/rsyslog.conf</span>，
+		这个文件规定了『<span class="text_import2">(1)什么服务 (2)的什么等级消息 (3)需要被记录在哪里(设备或文件)</span>』
+		这三个咚咚，所以设置的语法会是这样：</p>
+<table class="term"><tbody><tr><td class="term"><pre><span class="term_write">服务名称[.=!]消息等级		消息记录的文件名或设备或主机</span>
+<span class="term_say"># 底下以 mail 这个服务产生的 info 等级为例：</span>
+mail.info			/var/log/maillog_info
+<span class="term_say"># 这一行说明：mail 服务产生的大于等于 info 等级的消息，都记录到 
+# /var/log/maillog_info 文件中的意思。</span>
+</pre></td></tr></tbody></table>
+		<p>我们将上面的数据简单的分为三部分来说明：</p>
+		<ul class="toplist"><li>服务名称</li></ul>
+		<p>rsyslogd 主要还是透过 Linux 核心提供的 syslog 相关规范来设置数据的分类的，Linux 的 syslog 本身有规范一些服务消息，
+		你可以透过这些服务来保存系统的消息。Linux 核心的 syslog 认识的服务类型主要有底下这些：
+		(可使用 man 3 syslog 查找到相关的信息，或查找 syslog.h 这个文件来了解的！)</p>
+<table class="news" style="width: 95%">
+<tbody><tr class="theader"><td style="width: 70px">相对序号</td><td style="width: 100px">服务类别</td><td>说明</td></tr>
+<tr><td class="tcenter"><span class="text_import2">0</span></td>
+	<td class="tcenter"><span class="text_import2">kern(kernel)</span></td>
+	<td>就是核心 (kernel) 产生的消息，大部分都是硬件侦测以及核心功能的启用</td></tr>
+<tr><td class="tcenter"><span class="text_import2">1</span></td>
+	<td class="tcenter"><span class="text_import2">user</span></td>
+	<td>在用户层级所产生的信息，例如后续会介绍到的用户使用 logger 指令来记录注册表的功能</td></tr>
+<tr><td class="tcenter"><span class="text_import2">2</span></td>
+	<td class="tcenter"><span class="text_import2">mail</span></td>
+	<td>只要与邮件收发有关的消息记录都属于这个；</td></tr>
+<tr><td class="tcenter"><span class="text_import2">3</span></td>
+	<td class="tcenter"><span class="text_import2">daemon</span></td>
+	<td>主要是系统的服务所产生的信息，例如 systemd 就是这个有关的消息！</td></tr>
+<tr><td class="tcenter"><span class="text_import2">4</span></td>
+	<td class="tcenter"><span class="text_import2">auth</span></td>
+	<td>主要与认证/授权有关的机制，例如 login, ssh, su 等需要帐号/密码的咚咚；</td></tr>
+<tr><td class="tcenter"><span class="text_import2">5</span></td>
+	<td class="tcenter"><span class="text_import2">syslog</span></td>
+	<td>就是由 syslog 相关协定产生的信息，其实就是 rsyslogd 这支程序本身产生的信息啊！</td></tr>
+<tr><td class="tcenter"><span class="text_import2">6</span></td>
+	<td class="tcenter"><span class="text_import2">lpr</span></td>
+	<td>亦即是打印相关的消息啊！</td></tr>
+<tr><td class="tcenter"><span class="text_import2">7</span></td>
+	<td class="tcenter"><span class="text_import2">news</span></td>
+	<td>与新闻群组服务器有关的东西；</td></tr>
+<tr><td class="tcenter"><span class="text_import2">8</span></td>
+	<td class="tcenter"><span class="text_import2">uucp</span></td>
+	<td>全名为 Unix to Unix Copy Protocol，早期用于 unix 系统间的进程数据交换；</td></tr>
+<tr><td class="tcenter"><span class="text_import2">9</span></td>
+	<td class="tcenter"><span class="text_import2">cron</span></td>
+	<td>就是例行性工作调度 cron/at 等产生消息记录的地方；</td></tr>
+<tr><td class="tcenter"><span class="text_import2">10</span></td>
+	<td class="tcenter"><span class="text_import2">authpriv</span></td>
+	<td>与 auth 类似，但记录较多帐号私人的信息，包括 pam 模块的运作等！</td></tr>
+<tr><td class="tcenter"><span class="text_import2">11</span></td>
+	<td class="tcenter"><span class="text_import2">ftp</span></td>
+	<td>与 FTP 通信协定有关的消息输出！</td></tr>
+<tr><td class="tcenter"><span class="text_import2">16~23</span></td>
+	<td class="tcenter"><span class="text_import2">local0 ~ local7</span></td>
+	<td>保留给本机用户使用的一些注册表消息，较常与终端机交互。</td></tr>
+</tbody></table>
+		<p>上面谈到的都是 Linux 核心的 syslog 函数自行制订的服务名称，软件开发商可以透过调用上述的服务名称来记录他们的软件。
+		举例来说， sendmail 与 postfix 及 dovecot 都是与邮件有关的软件，这些软件在设计注册表记录时，都会主动调用 syslog
+		内的 mail 服务名称 (LOG_MAIL)。所以上述三个软件 (sendmail, postfix, dovecot) 产生的消息在 syslog 
+		看起来，就会『是 mail 』类型的服务了。我们可以将这个概念绘制如底下的图标来理解：</p>
+	<a id="fig18.2.1"></a>
+	<div style="text-align:center; margin: 0 auto 0 auto; "><img src="./vbird_files/syslog_daemon.gif" alt="syslog 所制订的服务名称与软件调用的方式" title="syslog 所制订的服务名称与软件调用的方式" style="border: 0px solid black; padding: 10px "></div>
+	<div style="text-align: center;">图18.2.1、syslog 所制订的服务名称与软件调用的方式</div>
+		<p>另外，每种服务所产生的数据量其实差异是很大的，举例来说， mail 的注册表消息多的要命，
+		每一封信件进入后， mail 至少需要记录『寄信人的信息；与收信者的消息』等等；
+		而如果是用来做为工作站主机的，那么登录者 (利用 login 登录主机处理事情)
+		的数量一定不少，那个 authpriv 所管辖的内容可就多的要命了。</p>
+		<p>为了让不同的信息放置到不同的文件当中，好让我们分门别类的进行注册表的管理，
+		所以啰，将各种类别的服务之注册表，记录在不同的文件里面，就是我们 /etc/rsyslog.conf 
+		所要作的规范了！</p>
+		<ul class="toplist"><li>消息等级</li></ul>
+		<p>同一个服务所产生的消息也是有差别的，有启动时仅通知系统而已的一般消息 (information)，
+		有出现还不至于影响到正常运作的警告消息 (warn) ，还有系统硬件发生严重错误时，所产生的重大问题消息 (error 等等)；
+		消息到底有多少种严重的等级呢？基本上，Linux 核心的 syslog 将消息分为七个主要的等级，根据 syslog.h 的定义，消息名称与数值的对应如下：</p>
+<table class="news" style="width: 95%">
+<tbody><tr class="theader"><td style="width: 80px ">等级数值</td><td style="width: 80px">等级名称</td><td>说明</td></tr>
+<tr><td class="tcenter">7</td><td class="tcenter"><span class="text_import2">debug</span></td>
+	<td>用来 debug (调试) 时产生的消息数据；</td></tr>
+<tr><td class="tcenter">6</td><td class="tcenter"><span class="text_import2">info</span></td>
+	<td>仅是一些基本的消息说明而已；</td></tr>
+<tr><td class="tcenter">5</td><td class="tcenter"><span class="text_import2">notice</span></td>
+	<td>虽然是正常信息，但比 info 还需要被注意到的一些信息内容；</td></tr>
+<tr><td class="tcenter">4</td><td class="tcenter"><span class="text_import2">warning<br>(warn)</span></td>
+	<td>警示的消息，可能有问题，但是还不至于影响到某个 daemon 运作的信息；基本上，
+	info, notice, warn 这三个消息都是在告知一些基本信息而已，应该还不至于造成一些系统运作困扰；</td></tr>
+<tr><td class="tcenter">3</td><td class="tcenter"><span class="text_import2">err <br>(error)</span></td>
+	<td>一些重大的错误消息，例如设置档的某些设置值造成该服务服法启动的信息说明，
+	通常借由 err 的错误告知，应该可以了解到该服务无法启动的问题呢！</td></tr>
+<tr><td class="tcenter">2</td><td class="tcenter"><span class="text_import2">crit</span></td>
+	<td>比 error 还要严重的错误信息，这个 crit 是临界点 (critical) 的缩写，这个错误已经很严重了喔！</td></tr>
+<tr><td class="tcenter">1</td><td class="tcenter"><span class="text_import2">alert</span></td>
+	<td>警告警告，已经很有问题的等级，比 crit 还要严重！</td></tr>
+<tr><td class="tcenter">0</td><td class="tcenter"><span class="text_import2">emerg <br>(panic)</span></td>
+	<td>疼痛等级，意指系统已经几乎要当机的状态！
+	很严重的错误信息了。通常大概只有硬件出问题，导致整个核心无法顺利运作，就会出现这样的等级的消息吧！</td></tr>
+</tbody></table>
+		<p>基本上，在 0(emerg) 到 6(info) 的等级之间，等级数值越高代表越没事，等级靠近 0 则代表事情大条了！除了 0 到 6 之外还有两个比较特殊的等级，
+		那就是 <span class="text_import2">debug(错误侦测等级) 与 none (不需登录等级)</span> 两个，当我们想要作一些错误侦测，或者是忽略掉某些服务的信息时，
+		就用这两个咚咚吧！</p>
+		<p>特别留意一下在消息等级之前还有 [.=!] 的链接符号喔！他代表的意思是这样的：</p>
+		<ul>
+		<li><span class="text_import1" style="font-family: &#39;细明体&#39;">. </span>：代表『比后面还要严重的等级 (含该等级)
+			都被记录下来』的意思，例如： mail.info 代表只要是 mail
+			的信息，而且该信息等级严重于 info (含 info 本身)时，就会被记录下来的意思。</li>
+		<li><span class="text_import1" style="font-family: &#39;细明体&#39;">.=</span>：代表所需要的等级就是后面接的等级而已，
+			其他的不要！</li>
+		<li><span class="text_import1" style="font-family: &#39;细明体&#39;">.!</span>：代表不等于，
+			亦即是除了该等级外的其他等级都记录。</li>
+		</ul>
+		
+		<p>一般来说，我们比较常使用的是『.』这个链接符号啦！^_^</p>
+		<ul class="toplist"><li>消息记录的文件名或设备或主机</li></ul>
+		<p>再来则是这个消息要放置在哪里的设置了。通常我们使用的都是记录的文件啦！但是也可以输出到设备呦！
+		例如打印机之类的！也可以记录到不同的主机上头去呢！底下就是一些常见的放置处：</p>
+		<ul>
+		<li>文件的绝对路径：通常就是放在 /var/log 里头的文件啦！</li>
+		<li>打印机或其他：例如 /dev/lp0 这个打印机设备</li>
+		<li>用户名：显示给用户啰！</li>
+		<li>远程主机：例如 @study.vbird.tsai 当然啦，要对方主机也能支持才行！</li>
+		<li>*：代表『目前在在线的所有人』，类似 <a href="0410accountmanager.html#uselinux_talk">wall</a> 
+			这个指令的意义！</li>
+		</ul>
+		<ul class="toplist"><li>服务、daemon 与函数名称</li></ul>
+		<p>看完上面的说明，相信你一定会越来越迷糊！啊！怎么会有 syslog, rsyslogd, rsyslog.service！见鬼～名称都不相同！那是啥东西？
+		基本上，这几个东西你应该要这样看：</p>
+<table class="news" style="width: 95%">
+<tbody><tr><td>syslog</td>
+	<td>这个是 Linux 核心所提供的注册表设计指引，所有的要求大概都写入道一个名为 syslog.h 的头文件中。如果你想要开发与注册表有关的软件，
+	那你就得要依循这个 syslog 函数的要求去设计才行！可以使用 man 3 syslog 去查找一下相关的数据！</td></tr>
+<tr><td>rsyslogd</td>
+	<td>为了要达成实际上进行消息的分类所开发的一套软件，所以，这就是最基本的 daemon 程序！</td></tr>
+<tr><td>rsyslog.service</td>
+	<td>为了加入 systemd 的控制，因此 rsyslogd 的开发者设计的启动服务脚本设置！</td></tr>
+</tbody></table>
+		<p>这样简单的分类，应该比较容易了解名称上面的意义了吧？早期 CentOS 5.x 以前，要达成 syslog 的功能是由一只名为 syslogd 的 daemon 来完成的，
+		从 CentOS 6 以来 (包含 CentOS 7) 则是透过 rsyslogd 这个 daemon 啰！</p>
+		<ul class="toplist"><li>rsyslog.conf 语法练习</li></ul>
+		<p>基本上，整个 rsyslog.conf 设置档的内容参数大概就只是这样而已，底下我们来思考一些例题，好让你可以更清楚的知道如何设置 rsyslogd 啊！</p>
+<table class="exam" style="width: 90%"><tbody><tr><td>
+例题：<div>
+如果我要将我的 mail 相关的数据给他写入 /var/log/maillog 当中，那么在 /etc/rsyslog.conf 的语法如何设计？
+</div>
+答：<div>
+基本的写法是这样的：
+<blockquote class="text_import2" style="font-family: &#39;细明体&#39;">mail.info　　　/var/log/maillog</blockquote>
+注意到上面喔，当我们的等级使用 info 时，那么『任何严重于 info 等级(含 info 这个等级)之上的消息，
+都会被写入到后面接的文件之中！』这样可以了解吗？也就是说，我们可以将所有 mail 的登录信息都记录在
+/var/log/maillog 里面的意思啦！
+</div>
+</td></tr></tbody></table><br>
+<table class="exam" style="width: 90%"><tbody><tr><td>
+例题：<div>
+我要将新闻群组数据 (news) 及例行性工作调度 (cron) 的消息都写入到一个称为
+/var/log/cronnews 的文件中，但是这两个进程的警告消息则额外的记录在 /var/log/cronnews.warn 中，
+那该如何设置我的 rsyslog.conf 呢？
+</div>
+答：<div>
+很简单啦！既然是两个进程，那么只好以分号来隔开了，此外，由于第二个指定文件中，我只要记录警告消息，
+因此设置上需要指定『.=』这个符号，所以语法成为了：
+<blockquote class="text_import2" style="font-family: &#39;细明体&#39;">
+news.*;cron.*　　　　　/var/log/cronnews<br>
+news.=warn;cron.=warn　/var/log/cronnews.warn</blockquote>
+上面那个『.=』就是在指定等级的意思啦！由于指定了等级，因此，只有这个等级的消息才会被记录在这个文件里面呢！
+此外你也必须要注意，news 与 cron 的警告消息也会写入 /var/log/cronnews 内喔！
+</div>
+</td></tr></tbody></table><br>
+<table class="exam" style="width: 90%"><tbody><tr><td>
+例题：<div>
+我的 messages 这个文件需要记录所有的信息，但是就是不想要记录 cron, mail 及 news 的信息，那么应该怎么写才好？
+</div>
+答：<div>
+可以有两种写法，分别是：
+<blockquote class="text_import2" style="font-family: &#39;细明体&#39;">
+*.*;news,cron,mail.none　　　　　　/var/log/messages<br>
+*.*;news.none;cron.none;mail.none　/var/log/messages</blockquote>
+使用『,』分隔时，那么等级只要接在最后一个即可，如果是以『;』来分的话，
+那么就需要将服务与等级都写上去啰！这样会设置了吧！
+</div>
+</td></tr></tbody></table><br>
+		<a id="syslog_conf_default"></a>
+		<ul class="toplist"><li>CentOS 7.x 缺省的 rsyslog.conf 内容</li></ul>
+		<p>了解语法之后，我们来看一看 rsyslogd 有哪些系统服务已经在记录了呢？就是瞧一瞧 /etc/rsyslog.conf 这个文件的缺省内容啰！
+		(注意！如果需要将该行做为注解时，那么就加上 # 符号就可以啦)</p>
+<table class="term"><tbody><tr><td class="term"><pre><span class="term_hd"># 来自 CentOS 7.x 的相关数据</span>
+[root@study ~]# <span class="term_command">vim /etc/rsyslog.conf</span>
+<span class="term_write"><span class="term_note"> 1</span> #kern.*                                              /dev/console
+<span class="term_note"> 2</span> *.info;mail.none;authpriv.none;cron.none             /var/log/messages
+<span class="term_note"> 3</span> authpriv.*                                           /var/log/secure
+<span class="term_note"> 4</span> mail.*                                              -/var/log/maillog
+<span class="term_note"> 5</span> cron.*                                               /var/log/cron
+<span class="term_note"> 6</span> *.emerg                                              :omusrmsg:*
+<span class="term_note"> 7</span> uucp,news.crit                                       /var/log/spooler
+<span class="term_note"> 8</span> local7.*                                             /var/log/boot.log</span>
+</pre></td></tr></tbody></table>
+		<p>上面总共仅有 8 行设置值，每一行的意义是这样的：</p>
+		<ol>
+		<li>#kern.*：只要是核心产生的消息，全部都送到 console(终端机) 去。console 通常是由外部设备连接到系统而来，
+		举例来说，很多封闭型主机 (没有键盘、屏幕的系统) 可以透过连接 RS232 连接口将消息传输到外部的系统中，
+		例如以笔记型电脑连接到封闭主机的 RS232 插口。这个项目通常应该是用在系统出现严重问题而无法使用缺省的屏幕观察系统时，
+		可以透过这个项目来连接取得核心的消息。(<a href="0570syslog.html#ps1">注1</a>)<br><br></li>
+		<li>*.info;mail.none;authpriv.none;cron.none：由于 mail, authpriv, cron 等类别产生的消息较多，
+		且已经写入底下的数个文件中，因此在 /var/log/messages 里面就不记录这些项目。除此之外的其他消息都写入 /var/log/messages 
+		中。这也是为啥我们说这个 messages 文件很重要的缘故！<br><br></li>
+		<li>authpriv.*：认证方面的消息均写入 /var/log/secure 文件；<br><br></li>
+		<li>mail.*：邮件方面的消息则均写入 /var/log/maillog 文件；<br><br></li>
+		<li>cron.*：例行性工作调度均写入 /var/log/cron 文件；<br><br></li>
+		<li>*.emerg：当产生最严重的错误等级时，将该等级的消息以 wall 的方式广播给所有在系统登录的帐号得知，
+		要这么做的原因是希望在线的用户能够赶紧通知系统管理员来处理这么可怕的错误问题。<br><br></li>
+		<li>uucp,news.crit：uucp 是早期 Unix-like 系统进行数据传递的通信协定，后来常用在新闻群组的用途中。 news
+		则是新闻群组。当新闻群组方面的信息有严重错误时就写入 /var/log/spooler 文件中；<br><br></li>
+		<li>local7.*：将本机开机时应该显示到屏幕的消息写入到 /var/log/boot.log 文件中；</li>
+		</ol>
+		<p>在上面的第四行关于 mail 的记录中，<span class="text_import2">在记录的文件 /var/log/maillog 
+		前面还有个减号『 - 』是干嘛用的？由于邮件所产生的消息比较多，因此我们希望邮件产生的消息先保存在速度较快的内存中 
+		(buffer) ，等到数据量够大了才一次性的将所有数据都填入磁盘内</span>，这样将有助于注册表的访问性能。
+		只不过由于消息是暂存在内存内，因此若不正常关机导致登录信息未回填到注册表中，可能会造成部分数据的遗失。</p>
+		<p>此外，每个 Linux distributions 的 rsyslog.conf 设置差异是颇大的，如果你想要找到相对应的登录信息时，
+		可得要查阅一下 /etc/rsyslog.conf 这个文件才行！否则可能会发生分析到错误的信息喔！举例来说，
+		<a href="0570syslog.html#analyze_vbird">鸟哥有自己写一支分析注册表的 script</a>，这个 script 是依据 Red Hat 
+		系统缺省的注册表所写的，因此不同的 distributions 
+		想要使用这支程序时，就得要自行设计与修改一下 /etc/rsyslog.conf 才行喔！否则就可能会分析到错误的信息啰。
+		那么如果你有自己的需要而得要修订注册表时，该如何进行？</p>
+		<ul class="toplist"><li>自行增加注册表文件功能</li></ul>
+		<p>如果你有其他的需求，所以需要特殊的文件来帮你记录时，呵呵！别客气，千万给他记录在
+		/etc/rsyslog.conf 当中，如此一来，你就可以重复的将许多的信息记录在不同的文件当中，以方便你的管理呢！
+		让我们来作个练习题吧！如果你想要让『所有的信息』都额外写入到 /var/log/admin.log 这个文件时，
+		你可以怎么作呢？先自己想一想，并且作一下，再来看看底下的作法啦！</p>
+<table class="term"><tbody><tr><td class="term"><pre><span class="term_hd"># 1. 先设置好所要创建的文件设置！</span>
+[root@study ~]# <span class="term_command">vim /etc/rsyslog.conf</span>
+<span class="term_write"># Add by VBird 2015/08/19       <span class="term_note">&lt;==再次强调，自己修改的时候加入一些说明</span>
+*.info      /var/log/admin.log</span>  <span class="term_note">&lt;==有用的是这行啦！</span>
+<span class="term_hd"># 2. 重新启动 rsyslogd 呢！</span>
+[root@study ~]# <span class="term_command">systemctl restart rsyslog.service</span>
+[root@study ~]# <span class="term_command">ll /var/log/admin.log</span>
+-rw-r--r--. 1 root root 325 Aug 20 00:54 /var/log/admin.log
+<span class="term_say"># 瞧吧！创建了这个注册表出现啰！</span>
+</pre></td></tr></tbody></table>
+		<p>很简单吧！如此一来，所有的信息都会写入 /var/log/admin.log 里面了！</p>
+	<br></div><br>
+	<a id="syslogd_secure"></a>
+	<div class="block2"><div class="gototop"><a href="0570syslog.html#top">Top</a></div>
+	<h2>18.2.2 注册表的安全性设置</h2>
+		<p>好了，由上一个小节里面我们知道了 rsyslog.conf 的设置，也知道了注册表内容的重要性了，
+		所以，如果幻想你是一个很厉害的骇客，想利用他人的电脑干坏事，然后又不想留下证据，
+		你会怎么作？对啦！就是离开的时候将屁股擦干净，将所有可能的消息都给他抹煞掉，
+		所以<span class="text_import2">第一个动脑筋的地方就是注册表的清除工作啦</span>～
+		如果你的注册表不见了，那该怎办？</p>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		哇！鸟哥教人家干坏事……喂！不要乱讲话～俺的意思是，如果改天你发现你的注册表不翼而飞了，
+		或者是发现你的注册表似乎不太对劲的时候，最常发现的就是网友常常会回报说，他的
+		/var/log 这个目录『不见了！』不要笑！这是真的事情！请记得，『赶快清查你的系统！』
+		</fieldset><br>
+		<p>伤脑筋呢！有没有办法防止注册表被删除？或者是被 root 自己不小心变更呢？有呀！拔掉网络线或电源线就好了……呵呵！
+		别担心，基本上，我们可以透过一个隐藏的属性来设置你的注册表，成为『
+		<span class="text_import2">只可以增加数据，但是不能被删除</span>
+		』的状态，那么或许可以达到些许的保护！不过，如果你的
+		root 帐号被破解了，那么底下的设置还是无法保护的，因为你要记得『 <span class="text_import2">root
+		是可以在系统上面进行任何事情的</span> 』，因此，请将你的 root 
+		这个帐号的密码设置的安全一些！千万不要轻忽这个问题呢！</p>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		为什么注册表还要防止被自己 (root) 不小心所修改过呢？
+		鸟哥在教 Linux 的课程时，我的学生常常会举手说：『老师，我的注册表不能记录信息了！糟糕！是不是被入侵了啊？』
+		怪怪！明明是电脑教室的主机，使用的是 Private IP 而且学校计中还有抵挡机制，不可能被攻击吧？
+		查找了才知道原来同学很喜欢使用『 :wq 』来离开 vim 的环境，但是 rsyslogd 的注册表只要『被编辑过』就无法继续记录！
+		所以才会导致不能记录的问题。此时你得要 (1)改变使用 vim 的习惯； (2)重新启动 rsyslog.service 让他再继续提供服务才行喔！
+		</fieldset><br>
+		<p>既然如此，那么我们就来处理一下隐藏属性的东东吧！我们在<a href="0220filemanager.html">第六章</a>谈到过 <a href="0220filemanager.html#lsattr">lsattr</a>
+		与 <a href="0220filemanager.html#chattr">chattr</a>
+		这两个东西啦！如果将一个文件以 chattr 设置 i 这个属性时，那么该文件连 root
+		都不能杀掉！而且也不能添加数据，嗯！真安全！但是，如此一来注册表的功能岂不是也就消失了？
+		因为没有办法写入呀！所以啰，<span class="text_import2">我们要使用的是
+		a 这个属性</span>！你的注册表如果设置了这个属性的话，那么
+		<span class="text_import2">他将只能被增加，而不能被删除</span>！嗯！
+		这个项目就非常的符合我们注册表的需求啦！因此，你可以这样的增加你的注册表的隐藏属性。</p>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		请注意，底下的这个 chattr 的设置状态：『仅适合已经对 Linux 系统很有概念的朋友』来设置，
+		对于新手来说，建议你直接使用系统的默认值就好了，免得到最后注册表无法写入～
+		那就比较糗一点！ @_@
+		</fieldset><br>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">chattr +a /var/log/admin.log</span>
+[root@study ~]# <span class="term_command">lsattr /var/log/admin.log</span>
+-----a---------- /var/log/admin.log
+</pre></td></tr></tbody></table>
+		<p>加入了这个属性之后，你的 /var/log/admin.log 注册表从此就仅能被增加，而不能被删除，直到
+		root 以『 chattr -a /var/log/admin.log 』取消这个 a 的参数之后，才能被删除或移动喔！</p>
+		<p>虽然，为了你注册表的信息安全，这个 chattr 的 +a 旗标可以帮助你维护好这个文件，
+		不过，如果你的系统已经被取得 root 的权限，而既然 root 可以下达 chattr -a 来取消这个旗标，
+		所以啰，还是有风险的啦！此外，前面也稍微提到，新手最好还是先不要增加这个旗标，
+		很容易由于自己的忘记，导致系统的重要消息无法记录呢。</p>
+		<p>基本上，鸟哥认为，这个旗标最大的用处除了在保护你注册表的数据外，
+		他还可以帮助你避免掉不小心写入注册表的状况喔。要注意的是，当『
+		<span class="text_import2">你不小心 "手动" 更动过注册表后，例如那个 /var/log/messages ，
+		你不小心用 vi 开启他，离开却下达 :wq 的参数，呵呵！那么该文件未来将不会再继续进行登录动作！</span> 
+		』这个问题真的很常发生！由于你以 vi 保存了注册表，则 rsyslogd 会误判为该文件已被更动过，
+		将导致 rsyslogd 不再写入该文件新的内容～很伤脑筋的！</p>
+		<p>要让该注册表可以继续写入，你只要重新启动 rsyslogd.service 即可。
+		不过，总是比较麻烦。所以啊，如果你针对注册表下达 chattr +a 的参数，嘿嘿！
+		未来你就不需要害怕不小心更动到该文件了！因为无法写入嘛！除了可以添加之外～ ^_^</p>
+		<p>不过，也因为这个 +a 的属性让该文件无法被删除与修改，所以啰，当我们进行注册表案轮替时 (logrotate)
+		，将会无法移动该注册表的文件名呢！所以会造成很大的困扰。这个困扰虽然可以使用 logrotate 
+		的设置档来解决，但是，还是先将注册表的 +a 旗标拿掉吧！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">chattr -a /var/log/admin.log</span>
+</pre></td></tr></tbody></table>
+	<br></div><br>
+	<a id="syslogd_server"></a>
+	<div class="block2"><div class="gototop"><a href="0570syslog.html#top">Top</a></div>
+	<h2>18.2.3 注册表服务器的设置</h2>
+		<p>我们在之前稍微提到的，在 rsyslog.conf 文件当中，可以将登录数据发送到打印机或者是远程主机上面去。这样做有什么意义呢？
+		如果你将登录信息直接发送到打印机上面的话，那么万一不小心你的系统被 cracker 所入侵，
+		他也将你的 /var/log/ 砍掉了，怎么办？没关系啊！反正你已经将重要数据直接以打印机记录起来了，
+		嘿嘿！他是无法逃开的啦！^_^</p>
+		<p>再想像一个环境，你的办公室内有十部 Linux 主机，每一部负责一个网络服务，
+		你为了要了解每部主机的状态，因此，你常常需要登录这十部主机去查阅你的注册表～
+		哇！光用想的，每天要进入十部主机去查数据，想到就烦～没关系～这个时候我们可以让某一部主机当成
+		『注册表服务器』，用他来记录所有的十部 linux 主机的信息，嘿嘿！这样我就直接进入一部主机就可以了！
+		省时又省事，真方便～</p>
+		<p>那要怎么达到这样的功能呢？很简单啦，我们 CentOS 7.x 缺省的 rsyslogd 本身就已经具有这个注册表服务器的功能了，
+		只是缺省并没有启动该功能而已。你可以透过 man rsyslogd 去查找一下相关的选项就能够知道啦！
+		既然是注册表服务器，那么我们的 Linux 主机当然会启动一个端口口来监听了，那个缺省的端口口就是 UDP 或 TCP 的 port 514 喔！</p>
+	<a id="fig18.2.2"></a>
+	<div style="text-align:center; margin: 0 auto 0 auto; "><img src="./vbird_files/rsyslogd_server.jpg" alt="注册表服务器的架构" title="注册表服务器的架构" style="border: 0px solid black; padding: 10px "></div>
+	<div style="text-align: center;">图18.2.2、注册表服务器的架构</div>
+		<p>如上图所示，服务器会启动监听的端口口，用户端则将注册表再转出一份送到服务器去。
+		而既然是注册表『服务器』，所以当然有服务器与用户端 (client) 啰！这两者的设置分别是这样的：</p>
+<table class="term"><tbody><tr><td class="term"><pre><span class="term_hd"># 1. Server 端：修改 rsyslogd 的启动设置档，在 /etc/rsyslog.conf 内！</span>
+[root@study ~]# <span class="term_command">vim /etc/rsyslog.conf</span>
+<span class="term_say"># 找到底下这几行：</span>
+# Provides UDP syslog reception
+#$ModLoad imudp
+#$UDPServerRun 514
+# Provides TCP syslog reception
+#$ModLoad imtcp
+#$InputTCPServerRun 514
+<span class="term_say"># 上面的是 UDP 端口口，底下的是 TCP 端口口！如果你的网络状态很稳定，就用 UDP 即可。
+# 不过，如果你想要让数据比较稳定传输，那么建议使用 TCP 啰！所以修改底下两行即可！</span>
+<span class="term_write">$ModLoad imtcp
+$InputTCPServerRun 514 </span>
+<span class="term_hd"># 2. 重新启动与观察 rsyslogd 喔！</span>
+[root@study ~]# <span class="term_command">systemctl restart rsyslog.service</span>
+[root@study ~]# <span class="term_command">netstat -ltnp | grep syslog</span>
+Proto Recv-Q Send-Q Local Address  Foreign Address   State    PID/Program name
+tcp        0      0 0.0.0.0:<span class="term_write">514</span>    0.0.0.0:*         LISTEN   2145/rsyslogd
+tcp6       0      0 :::514         :::*              LISTEN   2145/rsyslogd
+<span class="term_say"># 嘿嘿！你的注册表主机已经设置妥当啰！很简单吧！</span>
+</pre></td></tr></tbody></table>
+		<p>透过这个简单的动作，你的 Linux 主机已经可以接收来自其他主机的登录信息了！
+		当然啦，你必须要知道网络方面的相关基础，这里鸟哥只是先介绍，未来了解了网络相关信息后，再回头来这里瞧一瞧先！ ^_^</p>
+		<p>至于 client 端的设置就简单多了！只要指定某个信息发送到这部主机即可！
+		举例来说，我们的注册表服务器 IP 为 192.168.1.100 ，而 client 端希望所有的数据都送给主机，
+		所以，可以在 /etc/rsyslog.conf 里面添加这样的一行：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">vim /etc/rsyslog.conf</span>
+<span class="term_write">*.*       @@192.168.1.100</span>
+#*.*       @192.168.1.100  <span class="term_note"># 若用 UDP 传输，设置要变这样！</span>
+[root@study ~]# <span class="term_command">systemctl restart rsyslog.service</span>
+</pre></td></tr></tbody></table>
+		<p>再重新启动 rsyslog.service 后，立刻就搞定了！而未来主机上面的注册表当中，每一行的『主机名称』就会显示来自不同主机的信息了。
+		很简单吧！ ^_^。不过你得要特别注意，使用 TCP 传输与 UDP 传输的设置不太一样！请依据你的注册表服务器的设置值来选择你的用户端语法喔！
+		接下来，让我们来谈一谈，那么如何针对注册表来进行轮替 (rotate) 呢？</p>
+	<br></div>
+</div>
+<a id="rotate"></a>
+<div class="block1">
+<h2>18.3 注册表的轮替(logrotate)</h2>
+	<p>假设我们已经将登录数据写入了记录档中了，也已经利用 chattr 设置了 +a 这个属性了，那么该如何进行
+	logrotate 的工作呢？这里请特别留意的是：『<span class="text_import2">rsyslogd 利用的是 daemon 的方式来启动的，
+	当有需求的时候立刻就会被运行的，但是 logrotate 却是在规定的时间到了之后才来进行注册表的轮替，
+	所以这个 logrotate 进程当然就是挂在 <a href="0430cron.html">cron</a> 底下进行的呦！</span>』
+	仔细看一下 /etc/cron.daily/ 里面的文件，嘿嘿～看到了吧！ /etc/cron.daily/logrotate 
+	就是记录了每天要进行的注册表轮替的行为啦！ ^_^！底下我们就来谈一谈怎么样设计这个 logrotate 吧！</p>
+	<a id="rotate_config"></a>
+	<div class="block2"><div class="gototop"><a href="0570syslog.html#top">Top</a></div>
+	<h2>18.3.1 logrotate 的设置档</h2>
+		<p>既然 logrotate 主要是针对注册表来进行轮替的动作，所以啰，他当然必须要记载『
+		在什么状态下才将注册表进行轮替』的设置啊！那么 logrotate 这个程序的参数设置档在哪里呢？呵呵！那就是：</p>
+		<ul class="text_import2" style="font-family: &#39;细明体&#39;">
+		<li>/etc/logrotate.conf</li>
+		<li>/etc/logrotate.d/</li>
+		</ul>
+		<p>那个 logrotate.conf 才是主要的参数文件，至于 logrotate.d 是一个目录，
+		该目录里面的所有文件都会被主动的读入 /etc/logrotate.conf 当中来进行！另外，在
+		/etc/logrotate.d/ 里面的文件中，如果没有规定到的一些细部设置，则以 /etc/logrotate.conf
+		这个文件的规定来指定为默认值！</p>
+		<p>好了，刚刚我们提到 logrotate 的主要功能就是将旧的注册表案移动成旧档，
+		并且重新创建一个新的空的文件来记录，他的运行结果有点类似底下的图标：</p>
+	<a id="fig18.3.1"></a>
+	<div style="text-align:center; margin: 0 auto 0 auto; "><img src="./vbird_files/logrotate.gif" alt="注册表进行 logrotate 的结果" title="注册表进行 logrotate 的结果" style="border: 1px solid black; padding: 10px "></div>
+	<div style="text-align: center;">图18.3.1、注册表进行 logrotate 的结果</div>
+		<p>由上面的图标我们可以清楚的知道，当第一次运行完 rotate 之后，原本的 messages 会变成 messages.1
+		而且会制造一个空的 messages 给系统来保存注册表。而第二次运行之后，则 messages.1 会变成
+		messages.2 而 messages 会变成 messages.1 ，又造成一个空的 messages 
+		来保存注册表！那么如果我们仅设置保留三个注册表而已的话，那么运行第四次时，则
+		messages.3 这个文件就会被删除，并由后面的较新的保存注册表所取代！基本的工作就是这样啦！</p>
+		<p>不过近年来磁盘空间容量比较大了，加上管理员又担心注册表数据真的给它不见去，因此，你可能已经发现到，最近的注册表轮替后的文件名已经会加上日期参数，
+		然后源源不绝的保留在你的系统上耶～虽然这个设置是可以修订的，不过，鸟哥也真的希望保留日期的文件名延伸记录，真的比较不用担心未来要找问题时，
+		注册表却已经 GG 了...</p>
+		<p>那么多久进行一次这样的 logrotate 工作呢？这些都记录在 logrotate.conf	里面，我们来看一下缺省的 
+		logrotate 的内容吧！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">vim /etc/logrotate.conf</span>
+<span class="term_say"># 底下的设置是 "logrotate 的缺省设置值" ，如果个别的文件设置了其他的参数，
+# 则将以个别的文件设置为主，若该文件没有设置到的参数则以这个文件的内容为默认值！</span>
+<span class="term_write">weekly    <span class="term_note">&lt;==缺省每个礼拜对注册表进行一次 rotate 的工作</span>
+rotate 4  <span class="term_note">&lt;==保留几个注册表呢？缺省是保留四个！</span>
+create    <span class="term_note">&lt;==由于注册表被更名，因此创建一个新的来继续保存之意！</span>
+dateext   <span class="term_note">&lt;==就是这个设置值！可以让被轮替的文件名称加上日期作为文件名喔！</span>
+#compress <span class="term_note">&lt;==被更动的注册表是否需要压缩？如果注册表太大则可考虑此参数启动</span>
+include /etc/logrotate.d
+<span class="term_say"># 将 /etc/logrotate.d/ 这个目录中的所有文件都读进来运行 rotate 的工作！</span>
+/var/log/wtmp {       <span class="term_note">&lt;==仅针对 /var/log/wtmp 所设置的参数</span>
+    monthly           <span class="term_note">&lt;==每个月一次，取代每周！</span>
+    create 0664 root utmp <span class="term_note">&lt;==指定新建文件的权限与所属帐号/群组</span>
+    minsize 1M        <span class="term_note">&lt;==文件容量一定要超过 1M 后才进行 rotate (略过时间参数)</span>
+    rotate 1          <span class="term_note">&lt;==仅保留一个，亦即仅有 wtmp.1 保留而已。</span>
+}</span>
+<span class="term_say"># 这个 wtmp 可记录登录者与系统重新开机时的时间与来源主机及登录期间的时间。
+# 由于具有 minsize 的参数，因此不见得每个月一定会进行一次喔！要看文件容量。
+# 由于仅保留一个注册表而已，不满意的话可以将他改成 rotate 5 吧！</span>
+</pre></td></tr></tbody></table>
+		<p>由这个文件的设置我们可以知道 /etc/logrotate.d 其实就是由 /etc/logrotate.conf
+		所规划出来的目录，所以，其实我们可以将所有的数据都给他写入 /etc/logrotate.conf
+		即可，但是这样一来这个文件就实在是太复杂了，尤其是当我们使用很多的服务在系统上面时，
+		每个服务都要去修改 /etc/logrotate.conf 的设置也似乎不太合理～
+		所以，如果独立出来一个目录，那么每个以 RPM 打包方式所创建的服务的注册表轮替设置，
+		就可以独自成为一个文件，并且放置到 /etc/logrotate.d/ 当中即可，真是方便又合理的做法啊！ ^_^</p>
+		<p>一般来说，这个 /etc/logrotate.conf 是『缺省的轮替状态』而已，
+		我们的各个服务都可以拥有自己的注册表轮替设置，你也可以自行修改成自己喜欢的样式啊！
+		例如，如果你的系统的空间够大，并且担心调试以及骇客的问题，那么可以：</p>
+		<ul class="text_import2">
+		<li>将 rotate 4 改成 rotate 9 左右，以保存较多的备份文件。不过如果已经加上 dateext 的参数，那这个项目就不用更动了！</li>
+		<li>大部分的注册表不需要 compress 啰！但是空间太小就需要 compress ！尤其是很占硬盘空间的 httpd 更需要 compress 的！</li>
+		</ul>
+		<p>好了，上面我们大致介绍了 /var/log/wtmp 这个文件的设置，现在你知道了 logrotate.conf 的设置语法是：</p>
+<table class="term"><tbody><tr><td class="term"><pre>注册表的绝对路径文件名 ... {
+	个别的参数设置值，如 monthly, compress 等等
+}
+</pre></td></tr></tbody></table>
+		<p>底下我们再以 /etc/logrotate.d/syslog 这个轮替 rsyslog.service 服务的文件，来看看该如何设置他的 rotate 呢？</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">vim /etc/logrotate.d/syslog</span>
+/var/log/cron
+/var/log/maillog
+/var/log/messages
+/var/log/secure
+/var/log/spooler
+{
+    <span style="text-decoration: underline">sharedscripts</span>
+    <span style="text-decoration: underline">postrotate</span>
+        /bin/kill -HUP `cat /var/run/syslogd.pid 2&gt; /dev/null` 2&gt; /dev/null || true
+    <span style="text-decoration: underline">endscript</span>
+}
+</pre></td></tr></tbody></table>
+		<p>在上面的语法当中，我们知道正确的 logrotate 的写法为：</p>
+		<ul>
+		<li><span class="text_import2">文件名</span>：被处理的注册表绝对路径文件名写在前面，可以使用空白字符分隔多个注册表；</li>
+		<li><span class="text_import2">参数</span>：上述文件名进行轮替的参数使用 { } 包括起来；</li>
+		<li><span class="text_import2">运行脚本</span>：可调用外部指令来进行额外的命令下达，这个设置需与 
+			sharedscripts .... endscript 设置合用才行。至于可用的环境为：<br>
+			<ul>
+			<li><span class="text_import2">prerotate</span>：在启动 logrotate 
+			之前进行的指令，例如修改注册表的属性等动作；</li>
+			<li><span class="text_import2">postrotate</span>：在做完 logrotate 之后启动的指令，例如重新启动
+				(kill -HUP) 某个服务！</li>
+			<li>Prerotate 与 postrotate 对于已加上特殊属性的文件处理上面，是相当重要的运行进程！</li>
+			</ul></li>
+		</ul>
+		<p>那么 /etc/logrotate.d/syslog 内设置的 5 个文件的轮替功能就变成了：</p>
+		<ul>
+		<li>该设置只对 /var/log/ 内的 cron, maillog, messages, secure, spooler 有效；</li>
+		<li>注册表轮替每周一次、保留四个、且轮替下来的注册表不进行压缩(未更改默认值)；</li>
+		<li>轮替完毕后 (postrotate) 取得 syslog 的 PID 后，以 kill -HUP 重新启动 syslogd </li>
+		</ul>
+		<p>假设我们有针对 /var/log/messages 这个文件增加 chattr +a 的属性时，
+		依据 logrotate 的工作原理，我们知道，这个 /var/log/messages 将会被更名成为 
+		/var/log/messages.1 才是。但是由于加上这个 +a 的参数啊，所以更名是不可能成功的！
+		那怎么办呢？呵呵！就利用 prerotate 与 postrotate 来进行注册表轮替前、后所需要作的动作啊！
+		果真如此时，那么你可以这样修改一下这个文件喔！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">vim /etc/logrotate.d/syslog</span>
+/var/log/cron
+/var/log/maillog
+/var/log/messages
+/var/log/secure
+/var/log/spooler
+{
+    <span class="term_write">sharedscripts
+    prerotate
+       /usr/bin/chattr -a /var/log/messages
+    endscript</span>
+    sharedscripts
+    postrotate
+        /bin/kill -HUP `cat /var/run/syslogd.pid 2&gt; /dev/null` 2&gt; /dev/null || true
+        <span class="term_write">/usr/bin/chattr +a /var/log/messages</span>
+    endscript
+}
+</pre></td></tr></tbody></table>
+		<p>看到否？就是先给他去掉 a 这个属性，让注册表 /var/log/messages 可以进行轮替的动作，
+		然后运行了轮替之后，再给他加入这个属性！请特别留意的是，那个
+		/bin/kill -HUP ... 的意义，这一行的目的在于将系统的 rsyslogd
+		重新以其参数档 (rsyslog.conf) 的数据读入一次！也可以想成是 reload 的意思啦！
+		由于我们创建了一个新的空的记录档，如果不运行此一行来重新启动服务的话，
+		那么记录的时候将会发生错误呦！(请回到<a href="0440processcontrol.html">第十六章</a>读一下
+		kill 后面的 signal 的内容说明)</p>
+	<br></div><br>
+	<a id="rotate_command"></a>
+	<div class="block2"><div class="gototop"><a href="0570syslog.html#top">Top</a></div>
+	<h2>18.3.2 实际测试 logrotate 的动作</h2>
+		<p>好了，设置完成之后，我们来测试看看这样的设置是否可行呢？给他运行底下的指令：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">logrotate [-vf] logfile</span>
+<span class="term_say">选项与参数：
+-v  ：启动显示模式，会显示 logrotate 运作的过程喔！
+-f  ：不论是否符合设置档的数据，强制每个注册表都进行 rotate 的动作！</span>
+<span class="term_hd">范例一：运行一次 logrotate 看看整个流程为何？</span>
+[root@study ~]# <span class="term_command">logrotate -v /etc/logrotate.conf</span>
+reading config file /etc/logrotate.conf <span class="term_note">&lt;==读取主要设置档</span>
+including /etc/logrotate.d              <span class="term_note">&lt;==调用外部的设置</span>
+reading config file chrony              <span class="term_note">&lt;==就是外部设置啊！</span>
+<span class="term_say">....(中间省略)....</span>
+Handling 18 logs                        <span class="term_note">&lt;==共有 18 个注册表被记录</span>
+<span class="term_say">....(中间省略)....</span>
+rotating pattern: /var/log/cron
+/var/log/maillog
+/var/log/messages
+/var/log/secure
+/var/log/spooler
+ weekly (52 rotations)
+empty log files are not rotated, old logs are removed
+considering log /var/log/cron
+  log does not need rotating
+considering log /var/log/maillog
+  log does not need rotating
+considering log /var/log/messages       <span class="term_note">&lt;==开始处理 messages</span>
+  log does not need rotating            <span class="term_note">&lt;==因为时间未到，不需要更动！</span>
+<span class="term_say">....(底下省略)....</span>
+<span class="term_hd">范例二：强制进行 logrotate 的动作</span>
+[root@study ~]# <span class="term_command">logrotate -vf /etc/logrotate.conf</span>
+<span class="term_say">....(前面省略)....</span>
+rotating log /var/log/messages, log-&gt;rotateCount is 52
+dateext suffix '-20150820'
+glob pattern '-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+compressing log with: /bin/gzip
+<span class="term_say">....(底下省略)....</span>
+<span class="term_say"># 看到否？整个 rotate 的动作就是这样一步一步进行的～</span>
+[root@study ~]# <span class="term_command">ll /var/log/messages*; lsattr /var/log/messages</span>
+-rw-------. 1 root root    143 Aug 20 01:45 /var/log/messages
+-rw-------. 1 root root 167125 Aug 20 01:40 /var/log/messages-20150820
+-----a---------- /var/log/messages  <span class="term_note">&lt;==主动加入 a 的隐藏属性啰！</span>
+</pre></td></tr></tbody></table>
+		<p>上面那个 -f 具有『强制运行』的意思，如果一切的设置都没有问题的话，那么理论上，你的
+		/var/log 这个目录就会起变化啰！而且应该不会出现错误消息才对！嘿嘿！这样就
+		OK 了！很棒不是吗？！</p>
+		<p>由于 logrotate 的工作已经加入 crontab 里头了！所以现在每天系统都会自动的给他查看
+		logrotate 啰！不用担心的啦！只是要注意一下那个 /var/log/messages 里头是否常常有类似底下的字眼：</p>
+		<blockquote class="text_import2" style="font-family:&#39;细明体&#39;">
+		Aug 20 01:45:34 study rsyslogd: [origin software="rsyslogd" swVersion="7.4.7" x-pid="2145" x-info="http://www.rsyslog.com"] rsyslogd was HUPed</blockquote>
+		<p>这说明的是 rsyslogd 重新启动的时间啦 (就是因为 /etc/logrotate.d/syslog 的设置之缘故！)
+		底下我们来进行一些例题的练习，让你更详细的了解 logrotate 的功用啊！</p>
+	<br></div><br>
+	<a id="rotate_user"></a>
+	<div class="block2"><div class="gototop"><a href="0570syslog.html#top">Top</a></div>
+	<h2>18.3.3 自订注册表的轮替功能</h2>
+		<p>假设前提是这样的，前一小节当中，假设你已经创建了 /var/log/admin.log 这个文件，
+		现在，你想要将该文件加上 +a 这个隐藏标签，而且设置底下的相关信息：</p>
+		<ul>
+		<li>注册表轮替一个月进行一次；</li>
+		<li>该注册表若大于 10MB 时，则主动进行轮替，不需要考虑一个月的期限；</li>
+		<li>保存五个备份文件；</li>
+		<li>备份文件需要压缩</li>
+		</ul>
+		<p>那你可以怎么样设置呢？呵呵～很简单啊！看看底下的动作吧！</p>
+<table class="term"><tbody><tr><td class="term"><pre><span class="term_hd"># 1. 先创建 +a 这个属性啊！</span>
+[root@study ~]# <span class="term_command">chattr +a /var/log/admin.log</span>
+[root@study ~]# <span class="term_command">lsattr /var/log/admin.log</span>
+-----a---------- /var/log/admin.log
+[root@study ~]# <span class="term_command">mv /var/log/admin.log /var/log/admin.log.1</span>
+mv: cannot move `/var/log/admin.log' to `/var/log/admin.log.1': Operation not permitted
+<span class="term_say"># 这里确定了加入 a 的隐藏属性！所以 root 无法移动此注册表！</span>
+<span class="term_hd"># 2. 开始创建 logrotate 的设置档，增加一个文件在 /etc/logrotate.d 内就对了！</span>
+[root@study ~]# <span class="term_command">vim /etc/logrotate.d/admin</span>
+<span class="term_write"># This configuration is from VBird 2015/08/19
+/var/log/admin.log {
+        monthly   <span class="term_note">&lt;==每个月进行一次</span>
+        size=10M  <span class="term_note">&lt;==文件容量大于 10M 则开始处置</span>
+        rotate 5  <span class="term_note">&lt;==保留五个！</span>
+        compress  <span class="term_note">&lt;==进行压缩工作！</span>
+        sharedscripts
+        prerotate
+                /usr/bin/chattr -a /var/log/admin.log
+        endscript
+        sharedscripts
+        postrotate
+                /bin/kill -HUP `cat /var/run/syslogd.pid 2&gt; /dev/null` 2&gt; /dev/null || true
+                /usr/bin/chattr +a /var/log/admin.log
+        endscript
+}</span>
+<span class="term_hd"># 3. 测试一下 logrotate 相关功能的信息显示：</span>
+[root@study ~]# <span class="term_command">logrotate -v /etc/logrotate.conf</span>
+<span class="term_say">....(前面省略)....</span>
+rotating pattern: /var/log/admin.log  10485760 bytes (5 rotations)
+empty log files are rotated, old logs are removed
+considering log /var/log/admin.log
+  log does not need rotating
+not running prerotate script, since no logs will be rotated
+not running postrotate script, since no logs were rotated
+<span class="term_say">....(底下省略)....
+# 因为还不足一个月，文件也没有大于 10M，所以不需进行轮替！</span>
+<span class="term_hd"># 4. 测试一下强制 logrotate 与相关功能的信息显示：</span>
+[root@study ~]# <span class="term_command">logrotate -vf /etc/logrotate.d/admin</span>
+<span style="font-size: 9pt">reading config file /etc/logrotate.d/admin
+reading config file /etc/logrotate.d/admin
+Handling 1 logs
+rotating pattern: /var/log/admin.log  forced from command line (5 rotations)
+empty log files are rotated, old logs are removed
+considering log /var/log/admin.log
+  log needs rotating
+rotating log /var/log/admin.log, log-&gt;rotateCount is 5
+dateext suffix '-20150820'
+glob pattern '-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+renaming /var/log/admin.log.5.gz to /var/log/admin.log.6.gz (rotatecount 5, logstart 1, i 5),
+old log /var/log/admin.log.5.gz does not exist
+renaming /var/log/admin.log.4.gz to /var/log/admin.log.5.gz (rotatecount 5, logstart 1, i 4),
+old log /var/log/admin.log.4.gz does not exist
+renaming /var/log/admin.log.3.gz to /var/log/admin.log.4.gz (rotatecount 5, logstart 1, i 3),
+old log /var/log/admin.log.3.gz does not exist
+renaming /var/log/admin.log.2.gz to /var/log/admin.log.3.gz (rotatecount 5, logstart 1, i 2),
+old log /var/log/admin.log.2.gz does not exist
+renaming /var/log/admin.log.1.gz to /var/log/admin.log.2.gz (rotatecount 5, logstart 1, i 1),
+old log /var/log/admin.log.1.gz does not exist
+renaming /var/log/admin.log.0.gz to /var/log/admin.log.1.gz (rotatecount 5, logstart 1, i 0),
+old log /var/log/admin.log.0.gz does not exist
+log /var/log/admin.log.6.gz doesn't exist -- won't try to dispose of it
+running prerotate script
+fscreate context set to system_u:object_r:var_log_t:s0
+renaming /var/log/admin.log to /var/log/admin.log.1
+running postrotate script
+compressing log with: /bin/gzip</span>
+[root@study ~]# <span class="term_command">lsattr /var/log/admin.log*</span>
+-----a---------- /var/log/admin.log
+---------------- /var/log/admin.log.1.gz  <span class="term_note">&lt;==有压缩过喔！</span>
+</pre></td></tr></tbody></table>
+		<p>看到了吗？透过这个方式，我们可以创建起属于自己的 logrotate 设置文件，
+		很简便吧！尤其是要注意的， /etc/rsyslog.conf 与 /etc/logrotate.d/* 
+		文件常常要搭配起来，例如刚刚我们提到的两个案例中所创建的 /var/log/admin.log
+		就是一个很好的例子～创建后，还要使用 logrotate 来轮替啊！ ^_^</p>
+	<br></div>
+</div>
+<a id="journal"></a>
+<div class="block1">
+<h2>18.4 systemd-journald.service 简介</h2>
+	<p>过去只有 rsyslogd 的年代中，由于 rsyslogd 必须要开机完成并且运行了 rsyslogd 这个 daemon 之后，注册表才会开始记录。所以，核心还得要自己产生一个 klogd 的服务，
+	才能将系统在开机过程、启动服务的过程中的信息记录下来，然后等 rsyslogd 启动后才发送给它来处理～</p>
+	<p>现在有了 systemd 之后，由于这玩意儿是核心唤醒的，然后又是第一支运行的软件，它可以主动调用 systemd-journald 来协助记载注册表～
+	因此在开机过程中的所有信息，包括启动服务与服务若启动失败的情况等等，都可以直接被记录到 systemd-journald 里头去！</p>
+	<p>不过 systemd-journald 由于是使用于内存的注册表记录方式，因此重新开机过后，开机前的注册表信息当然就不会被记载了。
+	为此，我们还是建议启动 rsyslogd 来协助分类记录！也就是说， systemd-journald 用来管理与查找这次开机后的登录信息，而
+	rsyslogd 可以用来记录以前及现在的所以数据到磁盘文件中，方便未来进行查找喔！</p>
+	<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">	虽然 systemd-journald 所记录的数据其实是在内存中，但是系统还是利用文件的型态将它记录到 /run/log/ 底下！
+	不过我们从前面几章也知道， /run 在 CentOS 7 其实是内存内的数据，所以重新开机过后，这个 /run/log 底下的数据当然就被刷新，旧的当然就不再存在了！
+	</fieldset><br>
+	<a id="journalctl"></a>
+	<div class="block2"><div class="gototop"><a href="0570syslog.html#top">Top</a></div>
+	<h2>18.4.1 使用 journalctl 观察登录信息</h2>
+		<p>那么 systemd-journald.service 的数据要如何叫出来查阅呢？很简单！就透过 journalctl 即可！让我们来瞧瞧这个指令可以做些什么事？</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">journalctl [-nrpf] [--since TIME] [--until TIME] _optional</span>
+<span class="term_say">选项与参数：
+缺省会秀出全部的 log 内容，从旧的输出到最新的消息
+-n  ：秀出最近的几行的意思～找最新的信息相当有用
+-r  ：反向输出，从最新的输出到最旧的数据
+-p  ：秀出后面所接的消息重要性排序！请参考前一小节的 rsyslogd 信息
+-f  ：类似 tail -f 的功能，持续显示 journal 日志的内容(即时监测时相当有帮助！)
+--since --until：设置开始与结束的时间，让在该期间的数据输出而已
+_SYSTEMD_UNIT=unit.service ：只输出 unit.service 的信息而已
+_COMM=bash ：只输出与 bash 有关的信息
+_PID=pid   ：只输出 PID 号码的信息
+_UID=uid   ：只输出 UID 为 uid 的信息
+SYSLOG_FACILITY=[0-23] ：使用 syslog.h 规范的服务相对序号来调用出正确的数据！</span>
+<span class="term_hd">范例一：秀出目前系统中所有的 journal 日志数据</span>
+[root@study ~]# <span class="term_command">journalctl</span>
+-- Logs <span class="term_write">begin at Mon 2015-08-17 18:37:52 CST, end at Wed 2015-08-19 00:01:01 CST.</span> --
+Aug 17 18:37:52 study.centos.vbird systemd-journal[105]: Runtime journal is using 8.0M (max 
+ 142.4M, leaving 213.6M of free 1.3G, current limit 142.4M).
+Aug 17 18:37:52 study.centos.vbird systemd-journal[105]: Runtime journal is using 8.0M (max
+ 142.4M, leaving 213.6M of free 1.3G, current limit 142.4M).
+Aug 17 18:37:52 study.centos.vbird kernel: Initializing cgroup subsys cpuset
+Aug 17 18:37:52 study.centos.vbird kernel: Initializing cgroup subsys cpu
+<span class="term_say">.....(中间省略).....</span>
+Aug 19 00:01:01 study.centos.vbird run-parts(/etc/cron.hourly)[19268]: finished 0anacron
+Aug 19 00:01:01 study.centos.vbird run-parts(/etc/cron.hourly)[19270]: starting 0yum-hourly.cron
+Aug 19 00:01:01 study.centos.vbird run-parts(/etc/cron.hourly)[19274]: finished 0yum-hourly.cron
+<span class="term_say"># 从这次开机以来的所有数据都会显示出来！透过 less 一页页翻动给管理员查阅！数据量相当大！</span>
+<span class="term_hd">范例二：(1)仅显示出 2015/08/18 整天以及(2)仅今天及(3)仅昨天的日志数据内容</span>
+[root@study ~]# <span class="term_command">journalctl --since "2015-08-18 00:00:00" --until "2015-08-19 00:00:00"</span>
+[root@study ~]# <span class="term_command">journalctl --since today</span>
+[root@study ~]# <span class="term_command">journalctl --since yesterday --until today</span>
+<span class="term_hd">范例三：只找出 crond.service 的数据，同时只列出最新的 10 笔即可</span>
+[root@study ~]# <span class="term_command">journalctl _SYSTEMD_UNIT=crond.service -n 10</span>
+<span class="term_hd">范例四：找出 su, login 运行的注册表，同时只列出最新的 10 笔即可</span>
+[root@study ~]# <span class="term_command">journalctl _COMM=su _COMM=login -n 10</span>
+<span class="term_hd">范例五：找出消息严重等级为错误 (error) 的消息！</span>
+[root@study ~]# <span class="term_command">journalctl -p err</span>
+<span class="term_hd">范例六：找出跟登录服务 (auth, authpriv) 有关的注册表消息</span>
+[root@study ~]# <span class="term_command">journalctl SYSLOG_FACILITY=4 SYSLOG_FACILITY=10</span>
+<span class="term_say"># 更多关于 syslog_facility 的数据，请参考 18.2.1 小节的内容啰！</span>
+</pre></td></tr></tbody></table>
+		<p>基本上，有 journalctl 就真的可以搞定你的消息数据啰！全部的数据都在这里面耶～再来假设一下，你想要了解到注册表的即时变化，
+		那又该如何处置呢？现在，请开两个终端机，让我们来处理处理！</p>
+<table class="term"><tbody><tr><td class="term"><pre><span class="term_hd"># 第一号终端机，请使用底下的方式持续侦测系统！</span>
+[root@study ~]# <span class="term_command">journalctl -f</span>
+<span class="term_say"># 这时系统会好像卡住～其实不是卡住啦！是类似 tail -f 在持续的显示注册表信息的！</span>
+<span class="term_hd"># 第二号终端机，使用底下的方式随便发一封 email 给系统上的帐号！</span>
+[root@study ~]# <span class="term_command">echo "testing" | mail -s 'tset' dmtsai</span>
+<span class="term_say"># 这时，你会发现到第一号终端机竟然一直输出一些消息吧！没错！这就对了！</span>
+</pre></td></tr></tbody></table>
+		<p>如果你有一些必须要侦测的行为，可以使用这种方式来即时了解到系统出现的消息～而取消 journalctl -f 的方法，就是 [ctrl]+c 啊！</p>
+	<br></div><br>
+	<a id="logger"></a>
+	<div class="block2"><div class="gototop"><a href="0570syslog.html#top">Top</a></div>
+	<h2>18.4.2 logger 指令的应用</h2>
+		<p>上面谈到的是叫出注册表给我们查阅，那换个角度想，『如果你想要让你的数据保存到注册表当中』呢？那该如何是好？
+		这时就得要使用 logger 这个好用的家伙了！这个家伙可以传输很多信息，不过，我们只使用最简单的本机信息传递～
+		更多的用法就请您自行 man logger 啰！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">logger [-p 服务名称.等级] "消息"</span>
+<span class="term_say">选项与参数：
+服务名称.等级 ：这个项目请参考 rsyslogd 的本章后续小节的介绍；</span>
+<span class="term_hd">范例一：指定一下，让 dmtsai 使用 logger 来发送数据到注册表内</span>
+[root@study ~]# <span class="term_command">logger -p user.info "I will check logger command"</span>
+[root@study ~]# <span class="term_command">journalctl SYSLOG_FACILITY=1 -n 3</span>
+-- Logs begin at Mon 2015-08-17 18:37:52 CST, end at Wed 2015-08-19 18:03:17 CST. --
+Aug 19 18:01:01 study.centos.vbird run-parts(/etc/cron.hourly)[29710]: starting 0yum-hourly.cron
+Aug 19 18:01:01 study.centos.vbird run-parts(/etc/cron.hourly)[29714]: finished 0yum-hourly.cron
+<span class="term_write">Aug 19 18:03:17 study.centos.vbird dmtsai[29753]: I will check logger command</span>
+</pre></td></tr></tbody></table>
+		<p>现在，让我们来瞧一瞧，如果我们之前写的 backup.service 服务中，如果使用手动的方式来备份，亦即是使用 "/backups/backup.sh log" 来运行备份时，
+		那么就透过 logger 来记录备份的开始与结束的时间！该如何是好呢？这样作看看！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">vim /backups/backup.sh</span>
+#!/bin/bash
+<span class="term_write">if [ "${1}" == "log" ]; then
+        logger -p syslog.info "backup.sh is starting"
+fi</span>
+source="/etc /home /root /var/lib /var/spool/{cron,at,mail}"
+target="/backups/backup-system-$(date +%Y-%m-%d).tar.gz"
+[ ! -d /backups ] &amp;&amp; mkdir /backups
+tar -zcvf ${target} ${source} &amp;&gt; /backups/backup.log
+<span class="term_write">if [ "${1}" == "log" ]; then
+        logger -p syslog.info "backup.sh is finished"
+fi</span>
+[root@study ~]# <span class="term_command">/backups/backup.sh log</span>
+[root@study ~]# <span class="term_command">journalctl SYSLOG_FACILITY=5 -n 3</span>
+<span class="term_write">Aug 19 18:09:37 study.centos.vbird dmtsai[29850]: backup.sh is starting
+Aug 19 18:09:54 study.centos.vbird dmtsai[29855]: backup.sh is finished</span>
+</pre></td></tr></tbody></table>
+		<p>透过这个玩意儿，我们也能够将数据自行处置到注册表当中啰！</p>
+	<br></div><br>
+	<a id="journal_save"></a>
+	<div class="block2"><div class="gototop"><a href="0570syslog.html#top">Top</a></div>
+	<h2>18.2.3 保存 journal 的方式</h2>
+		<p>再强调一次，这个 systemd-journald.servicd 的消息是不会放到下一次开机后的，所以，重新开机后，那之前的记录通通会遗失。
+		虽然我们大概都有启动 rsyslogd 这个服务来进行后续的注册表放置，不过如果你比较喜欢 journalctl 的访问方式，那么可以将这些数据保存下来喔！</p>
+		<p>基本上，systemd-journald.service 的设置档主要参考 /etc/systemd/journald.conf 的内容，详细的参数你可以参考 man 5 journald.conf 的数据。
+		因为缺省的情况底下，设置档的内容应该已经符合我们的需求，所以这边鸟哥就不再修改设置档了。只是如果想要保存你的 journalctl 所读取的注册表，
+		那么就得要创建一个 /var/log/journal 的目录，并且处理一下该目录的权限，那么未来重新启动 systemd-journald.service 之后，
+		日志注册表就会主动的复制一份到 /var/log/journal 目录下啰！</p>
+<table class="term"><tbody><tr><td class="term"><pre><span class="term_hd"># 1. 先处理所需要的目录与相关权限设置</span>
+[root@study ~]# <span class="term_command">mkdir /var/log/journal</span>
+[root@study ~]# <span class="term_command">chown root:systemd-journal /var/log/journal</span>
+[root@study ~]# <span class="term_command">chmod 2775 /var/log/journal</span>
+<span class="term_hd"># 2. 重新启动 systemd-journald 并且观察备份的日志数据！</span>
+[root@study ~]# <span class="term_command">systemctl restart systemd-journald.service</span>
+[root@study ~]# <span class="term_command">ll /var/log/journal/</span>
+drwxr-sr-x. 2 root systemd-journal 27 Aug 20 02:37 309eb890d09f440681f596543d95ec7a
+</pre></td></tr></tbody></table>
+		<p>你得要注意的是，因为现在整个日志注册表的容量会持续长大，因此你最好还是观察一下你系统能用的总容量喔！避免不小心文件系统的容量被灌爆！
+		此外，未来在 /run/log 底下就没有相关的日志可以观察了！因为移动到 /var/log/journal 底下来啰！</p>
+		<p>其实鸟哥是这样想的，既然我们还有 rsyslog.service 以及 logrotate 的存在，因此这个 systemd-journald.service 产生的注册表，
+		个人建议最好还是放置到 /run/log 的内存当中，以加快访问的速度！而既然 rsyslog.service 可以存放我们的注册表，
+		似乎也没有必要再保存一份 journal 注册表到系统当中就是了。单纯的建议！如何处理，依照您的需求即可喔！</p>
+	<br></div>
+</div>
+<a id="analyze"></a>
+<div class="block1">
+<h2>18.5 分析注册表</h2>
+	<p>注册表的分析是很重要的！你可以自行以 vim 或者是 journalctl 进入注册表去查阅相关的信息。而系统也提供一些软件可以让你从注册表中取得数据，
+	例如之前谈过的 last, lastlog, dmesg 等等指令。不过，这些数据毕竟都非常的分散，如果你想要一口气读取所有的登录信息，
+	其实有点困扰的。不过，好在 CentOS 有提供 logwatch 这个注册表分析程序，你可以借由该程序来了解注册表信息。
+	此外，鸟哥也依据 Red Hat 系统的 journalctl 搭配 syslog 函数写了一支小程序给大家使用喔！</p>
+	<a id="logwatch"></a>
+	<div class="block2"><div class="gototop"><a href="0570syslog.html#top">Top</a></div>
+	<h2>18.5.1 CentOS 缺省提供的 logwatch</h2>
+		<p>虽然有一些有用的系统指令，不过，要了解系统的状态，还是得要分析整个注册表才行～
+		事实上，目前已经有相当多的注册表分析工具，例如 CentOS 7.x 上面缺省的 logwatch 这个套件所提供的分析工具，
+		他会每天分析一次注册表案，并且将数据以 email 的格式寄送给 root 呢！
+		你也可以直接到 logwatch 的官方网站上面看看：</p>
+		<ul><li><a href="http://www.logwatch.org/" target="_blank">http://www.logwatch.org/</a></li></ul>
+		<p>不过在我们的安装方式里面，缺省并没有安装 logwatch 就是了！所以，我们先来安装一下 logwatch 这套软件再说。假设你已经将 CentOS 7.1 
+		的原版光盘挂载在 /mnt 当中了，那使用底下的方式来处理即可：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">yum install /mnt/Packages/perl-5.*.rpm</span>
+&gt; <span class="term_command"> /mnt/Packages/perl-Date-Manip-*.rpm \</span>
+&gt; <span class="term_command"> /mnt/Packages/perl-Sys-CPU-*.rpm \</span>
+&gt; <span class="term_command"> /mnt/Packages/perl-Sys-MemInfo-*.rpm \</span>
+&gt; <span class="term_command"> /mnt/Packages/logwatch-*.rpm</span>
+<span class="term_say"># 得要安装数个软件才能够顺利的安装好 logwatch 喔！当然，如果你有网络，直接安装就好了！</span>
+[root@study ~]# <span class="term_command">ll /etc/cron.daily/0logwatch</span>
+-rwxr-xr-x. 1 root root 434 Jun 10  2014 /etc/cron.daily/0logwatch
+[root@study ~]# <span class="term_command">/etc/cron.daily/0logwatch</span>
+</pre></td></tr></tbody></table>
+		<p>安装完毕以后，logwatch 就已经写入 cron 的运作当中了！详细的运行方式你可以参考上表中 0logwatch 文件内容来处理，未来则每天会送出一封 email 给 root
+		查阅就是了。因为我们刚刚安装，那可以来分析一下吗？很简单啦！你就直接运行 0logwatch 即可啊！如上表最后一个指令的示意。因为鸟哥的测试机目前的服务很少，
+		所以产生的信息量也不多，因此运行的速度很快。比较忙的系统信息量比较大，分析过程会花去一小段时间。如果顺利运行完毕，那请用 root 的身份去读一下 email 啰！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">mail</span>
+Heirloom Mail version 12.5 7/5/10.  Type ? for help.
+"/var/spool/mail/root": 5 messages 2 new 4 unread
+&gt;N  4 root                  Thu Jul 30 19:35  29/763   "testing at job"
+ <span style="text-decoration: underline">N  5 logwatch@study.cento  Thu Aug 20 17:55  97/3045  "Logwatch for study.centos.vbird (Linux)"</span>
+&amp; <span class="term_command">5</span>
+Message  5:
+From root@study.centos.vbird  Thu Aug 20 17:55:23 2015
+Return-Path: &lt;root@study.centos.vbird&gt;
+X-Original-To: root
+Delivered-To: root@study.centos.vbird
+To: root@study.centos.vbird
+From: logwatch@study.centos.vbird
+Subject: Logwatch for study.centos.vbird (Linux)
+Auto-Submitted: auto-generated
+Precedence: bulk
+Content-Type: text/plain; charset="iso-8859-1"
+Date: Thu, 20 Aug 2015 17:55:23 +0800 (CST)
+Status: R
+<span class="term_say"># logwatch 会先说明分析的时间与 logwatch 版本等等信息</span>
+ ################### Logwatch 7.4.0 (03/01/11) ####################
+        Processing Initiated: Thu Aug 20 17:55:23 2015
+        Date Range Processed: yesterday
+                              ( 2015-Aug-19 )
+                              Period is day.
+        Detail Level of Output: 0
+        Type of Output/Format: mail / text
+        Logfiles for Host: study.centos.vbird
+ ##################################################################
+<span class="term_say"># 开始一项一项的数据进行分析！分析得很有道理啊！</span>
+ --------------------- pam_unix Begin ------------------------
+ su-l:
+    Sessions Opened:
+       dmtsai -&gt; root: 2 Time(s)
+ ---------------------- pam_unix End -------------------------
+ --------------------- Postfix Begin ------------------------
+      894   Bytes accepted                                 894
+      894   Bytes delivered                                894
+ ========   ==================================================
+        2   Accepted                                   100.00%
+ --------   --------------------------------------------------
+        2   Total                                      100.00%
+ ========   ==================================================
+        2   Removed from queue
+        2   Delivered
+ ---------------------- Postfix End -------------------------
+ --------------------- SSHD Begin ------------------------
+ Users logging in through sshd:
+    dmtsai:
+       192.168.1.200: 2 times
+ Received disconnect:
+    11: disconnected by user : 1 Time(s)
+ ---------------------- SSHD End -------------------------
+ --------------------- Sudo (secure-log) Begin ------------------------
+ dmtsai =&gt; root
+ --------------
+ /bin/su                        -   2 Time(s).
+ ---------------------- Sudo (secure-log) End -------------------------
+<span class="term_say"># 当然也得说明一下目前系统的磁盘使用状态喔！</span>
+ --------------------- Disk Space Begin ------------------------
+ Filesystem                 Size  Used Avail Use% Mounted on
+ /dev/mapper/centos-root     10G  3.7G  6.3G  37% /
+ devtmpfs                   1.4G     0  1.4G   0% /dev
+ /dev/vda2                 1014M  141M  874M  14% /boot
+ /dev/vda4                 1014M   33M  982M   4% /srv/myproject
+ /dev/mapper/centos-home    5.0G  642M  4.4G  13% /home
+ /dev/mapper/raidvg-raidlv  1.5G   33M  1.5G   3% /srv/raidlvm
+ ---------------------- Disk Space End -------------------------
+</pre></td></tr></tbody></table>
+		<p>由于鸟哥的测试用主机尚未启动许多服务，所以分析的项目很少。若你的系统已经启动许多服务的话，
+		那么分析的项目理应会多很多才对。</p>
+	<br></div><br>
+	<a id="analyze_vbird"></a>
+	<div class="block2"><div class="gototop"><a href="0570syslog.html#top">Top</a></div>
+	<h2>18.5.2 鸟哥自己写的注册表分析工具：</h2>
+		<p>虽然已经有了类似 logwatch 的工具，但是鸟哥自己想要分析的数据毕竟与对方不同～所以啰，鸟哥就自己写了一支小程序 
+		(shell script 的语法) 用来分析自己的注册表，这支程序分析的注册表主要由 journalctl 所产生，而且只会抓前一天的注册表来分析而已～
+		若比对 rsyslog.service 所产生的注册表，则主要用到底下几个对应的文件名 (虽然真的没用到！ ^_^)：</p>
+		<ul class="text_import2">
+		<li>/var/log/secure</li>
+		<li>/var/log/messages</li>
+		<li>/var/log/maillog</li></ul>
+		<p>当然啦，还不只这些啦，包括各个主要常见的服务，如 pop3, mail, ftp, su 等会使用到 pam 的服务，
+		都可以透过鸟哥写的这个小程序来分析与处理呢～整个数据还会输出一些系统信息。如果你想要使用这个程序的话，
+		欢迎下载：</p>
+		<ul><li><a href="http://linux.vbird.org//linux_basic/0570syslog//logfile_centos7.tar.gz">http://linux.vbird.org//linux_basic/0570syslog//logfile_centos7.tar.gz</a></li></ul>
+		<p>安装的方法也很简单，你只要将上述的文件在根目录底下解压缩，自然就会将 cron 调度与相对应的文件放到正确的目录去。
+		基本上鸟哥会用到的目录有 /etc/cron.d 以及 /root/bin/logfile 而已！鸟哥已经写了一个 crontab 在文件中，设置每日 00:10 去分析一次系统注册表。
+		不过请注意，这次鸟哥使用的注册表真的是来自于 journalctl ，所以 CentOS 6 以前的版本千万不要使用喔！现在假设我将下载的文件放在跟目录，所以：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">tar -zxvf /logfile_centos7.tar.gz -C /</span>
+[root@study ~]# <span class="term_command">cat /etc/cron.d/vbirdlogfile</span>
+10 0 * * * root /bin/bash /root/bin/logfile/logfile.sh &amp;&gt; /dev/null
+[root@study ~]# <span class="term_command">sh /root/bin/logfile/logfile.sh</span>
+<span class="term_say"># 开始尝试分析系统的注册表，依据你的注册表大小，分析的时间不固定！</span>
+[root@study ~]# <span class="term_command">mail</span>
+<span class="term_say"># 自己找到刚刚输出的结果，该结果的输出有点像底下这样：</span>
+Heirloom Mail version 12.5 7/5/10.  Type ? for help.
+"/var/spool/mail/root": 9 messages 4 new 7 unread
+ N  8 root                  Thu Aug 20 19:26  60/2653  "study.centos.vbird logfile analysis results"
+&gt;N  9 root                  Thu Aug 20 19:37  59/2612  "study.centos.vbird logfile analysis results"
+&amp; <span class="term_command">9</span>
+<span class="term_say"># 先看看你的硬件与操作系统的相关情况，尤其是 partition 的使用量更需要随时注意！</span>
+=============== system summary =================================
+Linux kernel  :  Linux version 3.10.0-229.el7.x86_64 (builder@kbuilder.dev.centos.org)
+CPU informatin:  2 Intel(R) Xeon(R) CPU E5-2650 v3 @ 2.30GHz
+CPU speed     :  2299.996 MHz
+hostname is   :  study.centos.vbird
+Network IP    :  192.168.1.100 
+Check time    :  2015/August/20 19:37:25 ( Thursday )
+Summary date  :  Aug 20
+Up times      :  3 days, 59 min,
+Filesystem summary:
+       Filesystem                Type      Size  Used Avail Use% Mounted on
+       /dev/mapper/centos-root   xfs        10G  3.7G  6.3G  37% /
+       devtmpfs                  devtmpfs  1.4G     0  1.4G   0% /dev
+       tmpfs                     tmpfs     1.4G   48K  1.4G   1% /dev/shm
+       tmpfs                     tmpfs     1.4G  8.7M  1.4G   1% /run
+       tmpfs                     tmpfs     1.4G     0  1.4G   0% /sys/fs/cgroup
+       /dev/vda2                 xfs      1014M  141M  874M  14% /boot
+       /dev/vda4                 xfs      1014M   33M  982M   4% /srv/myproject
+       /dev/mapper/centos-home   xfs       5.0G  642M  4.4G  13% /home
+       /dev/mapper/raidvg-raidlv xfs       1.5G   33M  1.5G   3% /srv/raidlvm
+       /dev/sr0                  iso9660   7.1G  7.1G     0 100% /mnt
+<span class="term_say"># 这个程序会将针对 internet 与内部监听的端口口分开来显示！</span>
+================= Ports 的相关分析信息 =======================
+主机启用的 port 与相关的 process owner：
+对外部接口开放的 ports (PID|owner|command)
+       tcp 21|(root)|/usr/sbin/vsftpd /etc/vsftpd/vsftpd.conf
+       tcp 22|(root)|/usr/sbin/sshd -D
+       tcp 25|(root)|/usr/libexec/postfix/master -w
+       tcp 222|(root)|/usr/sbin/sshd -f /etc/ssh/sshd2_config -D
+       tcp 514|(root)|/usr/sbin/rsyslogd -n
+       tcp 555|(root)|/usr/sbin/vsftpd /etc/vsftpd/vsftpd2.conf
+<span class="term_say"># 以下针对有启动的服务个别进行分析！</span>
+================= SSH 的注册表信息汇整 =======================
+今日没有使用 SSH 的纪录
+================= Postfix 的注册表信息汇整 ===================
+用户信箱受信次数：
+</pre></td></tr></tbody></table>
+		<p>目前鸟哥都是透过这支程序去分析自己管理的主机，然后再据以了解系统状况，如果有特殊状况则即时进行系统处理！
+		而且鸟哥都是将上述的 email 调整成自己可以在 Internet 上面读到的邮件，这样我每天都可以收到正确的注册表分析信息哩！</p>
+	<br></div>
+</div>
+<a id="hint"></a>
+<div class="block1">
+<h2>18.6 重点回顾</h2>
+<ul class="text_import2">
+	<li>注册表可以记录一个事件的何时、何地、何人、何事等四大信息，故系统有问题时务必查找注册表；</li>
+	<li>系统的注册表缺省都集中放置到 /var/log/ 目录内，其中又以 messages 记录的信息最多！</li>
+	<li>注册表记录的主要服务与程序为： systemd-journald.service, rsyslog.service, rsyslogd</li>
+	<li>rsyslogd 的设置档在 /etc/rsyslog.conf ，内容语法为：『 服务名称.等级  记载设备或文件』</li>
+	<li>透过 linux 的 syslog 函数查找，了解上述服务名称有 kernel, user, mail...从 0 到 23 的服务序号</li>
+	<li>承上，等级从不严重到严重依序有 info, notice, warning, error, critical, alert, emergency 等</li>
+	<li>rsyslogd 本身有提供注册表服务器的功能，透过修改 /etc/rsyslog.conf 内容即可达成；</li>
+	<li>logrotate 程序利用 crontab 来进行注册表的轮替功能；</li>
+	<li>logrotate 的设置档为 /etc/logrotate.conf ，而额外的设置则可写入 /etc/logrotate.d/* 内；</li>
+	<li>新的 CentOS 7 由于内置 systemd-journald.service 的功能，可以使用 journalctl 直接从内存读出注册表，查找性能较佳</li>
+	<li>logwatch 为 CentOS 7 缺省提供的一个注册表分析软件。</li>
+</ul>
+</div>
+<a id="ex"></a>
+<div class="block1">
+<h2>18.7 本章习题</h2>
+( 要看答案请将鼠标移动到『答：』底下的空白处，按下左键圈选空白处即可察看 )<br>
+实作题：
+<ul>
+	<li>请在你的 CentOS 7.x 上面，依照鸟哥提供的 logfile.sh 去安装，并将结果取出分析看看。</li>
+</ul><br>
+<hr>简答题部分：
+<ul>
+	<li>如果你想要将 auth 这个服务的结果中，只要消息等级高于 warn 就给予发送 email 到 root 的信箱，该如何处理？
+	<div class="blockex">
+		利用 vim 去编辑 /etc/rsyslog.conf 文件，内容为<br>
+		auth.warn   root
+	</div></li>
+	<li>启动系统登录信息时，需要启动哪两个 daemon 呢？
+	<div class="blockex">
+		systemd-journald.service, rsyslog.service
+	</div></li>
+	<li>rsyslogd 以及 logrotate 个别透过什么机制来运行？
+	<div class="blockex">
+		rsyslogd 为 stand alone daemon 的机制； logrotate 则是透过 crontab 来运行的！只是个指令而已。
+	</div></li>
+</ul>
+</div>
+<a id="reference"></a>
+<div class="block1">
+<h2>18.8 参考数据与延伸阅读</h2>
+<ul>
+	<li><a id="ps1"></a>注1：关于 console 的说明可以参考底下的链接：<br>
+		<a href="http://en.wikipedia.org/wiki/Console" target="_blank">http://en.wikipedia.org/wiki/Console</a><br>
+		<a href="http://publib.boulder.ibm.com/infocenter/systems/index.jsp?topic=/com.ibm.aix.files/doc/aixfiles/console.htm" target="_blank">http://publib.boulder.ibm.com/infocenter/systems/index.jsp?topic=/com.ibm.aix.files/doc/aixfiles/console.htm</a></li>
+	<li>关于 logfile 也有<a href="http://phorum.vbird.org/viewtopic.html?f=10&amp;t=34996&amp;p=148198">网友提供英文版</a>喔：
+	<a href="http://phorum.vbird.org/viewtopic.html?f=10&amp;t=34996&amp;p=148198">http://phorum.vbird.org/viewtopic.html?f=10&amp;t=34996&amp;p=148198</a></li>
+</ul>
+</div>
+</div>	<!-- mainarea -->
+</div>  
+</body></html>

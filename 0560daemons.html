@@ -1,0 +1,1627 @@
+<!DOCTYPE html>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	
+	<meta name="Author" content="VBird, 鸟哥">
+	<meta name="Description" content="认识 daemons 可重要了，能够更清楚的了解服务的启动与运作方式！">
+	<title>鸟哥的 Linux 私房菜 -- 第十七章、认识系统服务 (daemons)</title>
+	<style type="text/css">
+	</style>
+	<link href="./vbird_files/style_2013.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+<div class="tablearea">
+<div class="mainarea">
+<div class="block1">
+<!-- 本文的档头部分 -->
+<h1>第十七章、认识系统服务 (daemons)</h1>
+<div style="text-align:right">
+	<span class="text_history">最近更新日期：2015/08/14</span>
+</div>
+<!-- 本文的档头部分 -->
+<div class="abstract">
+	<p>在 Unix-Like 的系统中，你会常常听到 daemon 这个字眼！那么什么是传说中的 daemon
+	呢？这些 daemon 放在什么地方？他的功能是什么？该如何启动这些 daemon ？又如何有效的将这些
+	daemon 管理妥当？此外，要如何视察这些 daemon 开了多少个 ports ？又这些 ports 
+	要如何关闭？还有还有，晓得你系统的这些 port 各代表的是什么服务吗？
+	这些都是最基础需要注意的呢！尤其是在架设网站之前，这里的观念就显的更重要了。</p>
+	<p>从 CentOS 7.x 这一版之后，传统的 init 已经被舍弃，取而代之的是 systemd 这个家伙～这家伙跟之前的 init 有什么差异？
+	优缺点为何？如何管理不同种类的服务类型？以及如何取代原本的『运行等级』等等，很重要的改变喔！</p>
+</div>
+<!-- 本文的链接区部分 -->
+<div class="links">
+<ul>
+	<li><a href="0560daemons.html#daemon">17.1 什么是 daemon 与服务 (service)</a>
+	<ul>
+		<li><a href="0560daemons.html#daemon_type_init">17.1.1 早期 Systemp V 的 init 管理行为中 daemon 的主要分类</a></li>
+		<li><a href="0560daemons.html#daemon_type_systemd">17.1.2 systemd 使用的 unit 分类</a></li>
+	</ul></li>
+	<li><a href="0560daemons.html#systemctl_cmd">17.2 透过 systemctl 管理服务</a>
+	<ul>
+		<li><a href="0560daemons.html#systemctl_start">17.2.1 透过 systemctl 管理单一服务 (service unit) 的启动/开机启动与观察状态</a></li>
+		<li><a href="0560daemons.html#systemctl_list">17.2.2 透过 systemctl 观察系统上所有的服务</a></li>
+		<li><a href="0560daemons.html#systemctl_target">17.2.3 透过 systemctl 管理不同的操作环境 (target unit)</a></li>
+		<li><a href="0560daemons.html#systemctl_deps">17.2.4 透过 systemctl 分析各服务之间的相依性</a></li>
+		<li><a href="0560daemons.html#systemctl_files">17.2.5 与 systemd 的 daemon 运作过程相关的目录简介</a>：
+			<a href="0560daemons.html#etc_services">/etc/services</a></li>
+		<li><a href="0560daemons.html#systemctl_network">17.2.6 关闭网络服务</a></li>
+	</ul></li>
+	<li><a href="0560daemons.html#systemd_cfg">17.3 systemctl 针对 service 类型的设置档</a>
+	<ul>
+		<li><a href="0560daemons.html#systemd_cfg_dir">17.3.1 systemctl 设置档相关目录简介</a></li>
+		<li><a href="0560daemons.html#systemd_cfg_options">17.3.2 systemctl 设置档的设置项目简介</a></li>
+		<li><a href="0560daemons.html#systemd_cfg_vsftpd">17.3.3 两个 vsftpd 运作的实例</a></li>
+		<li><a href="0560daemons.html#systemd_cfg_repeat">17.3.4 多重的重复设置方式：以 getty 为例</a></li>
+		<li><a href="0560daemons.html#systemd_cfg_custom">17.3.5 自己的服务自己作</a></li>
+	</ul></li>
+	<li><a href="0560daemons.html#systemctl_timer">17.4 systemctl 针对 timer 的设置档</a></li><li>
+	</li><li><a href="0560daemons.html#illustrations">17.5 CentOS 7.x 缺省启动的服务简易说明</a></li>
+	<li><a href="0560daemons.html#hint">17.6 重点回顾</a></li>
+	<li><a href="0560daemons.html#ex">17.7 本章习题</a></li>
+	<li><a href="0560daemons.html#reference">17.8 参考数据与延伸阅读</a></li>
+</ul>
+</div>
+</div>
+<!-- 本文的正式部分 -->
+<a id="daemon"></a>
+<div class="block1">
+<h2>17.1 什么是 daemon 与服务 (service)</h2>
+	<p>我们在<a href="0440processcontrol.html#the_daemon">第十六章</a>就曾经谈过『服务』这东西！
+	当时的说明是『常驻在记体体中的进程，且可以提供一些系统或网络功能，那就是服务』。而服务一般的英文说法是『 service 』。</p>
+	<p>但如果你常常上网去查看一些数据的话，尤其是 Unix-Like 的相关操作系统，应该常常看到『请启动某某 daemon 
+	来提供某某功能』，唔！那么 daemon 与 service 有关啰？否则为什么都能够提供某些系统或网络功能？此外，这个 daemon
+	是什么东西呀？ daemon 的字面上的意思就是『守护神、恶魔？』还真是有点奇怪呦！^_^""！</p>
+	<p>简单的说，系统为了某些功能必须要提供一些服务 (不论是系统本身还是网络方面)，这个服务就称为 service 。
+	但是 service 的提供总是需要程序的运作吧！否则如何运行呢？所以达成这个 service 的程序我们就称呼他为 daemon 啰！
+	举例来说，达成循环型例行性工作调度服务 (service) 的程序为 crond 这个 daemon 啦！这样说比较容易理解了吧！</p>
+	<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">	你不必去区分什么是 daemon 与 service ！事实上，你可以将这两者视为相同！因为达成某个服务是需要一支 daemon 在背景中运作，
+	没有这支 daemon 就不会有 service ！所以不需要分的太清楚啦！
+	</fieldset><br>
+	<p>一般来说，当我们以文本模式或图形模式 (非单人维护模式) 完整开机进入 Linux 主机后，
+	系统已经提供我们很多的服务了！包括打印服务、工作调度服务、邮件管理服务等等；
+	那么这些服务是如何被启动的？他们的工作型态如何？底下我们就来谈一谈啰！</p>
+	<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">	daemon 既然是一只程序运行后的进程，那么 daemon 所处的那个原本的程序通常是如何命名的呢 (daemon 程序的命名方式)。
+	每一个服务的开发者，当初在开发他们的服务时，都有特别的故事啦！不过，无论如何，这些服务的名称被创建之后，被挂上
+	Linux 使用时，通常在服务的名称之后会加上一个 d ，例如例行性命令的创建的	at, 与 cron 这两个服务，
+	他的程序文件名会被取为 atd 与 crond，这个 d 代表的就是 daemon 
+	的意思。所以，在<a href="0440processcontrol.html">第十六章</a>中，我们使用了 ps 与 top 
+	来观察进程时，都会发现到很多的 {xxx}d 的进程，呵呵！通常那就是一些 daemon 的进程啰！
+	</fieldset><br>
+	<a id="daemon_type_init"></a>
+	<div class="block2"><div class="gototop"><a href="0560daemons.html#top">Top</a></div>
+	<h2>17.1.1 早期 System V 的 init 管理行为中 daemon 的主要分类 (Optional)</h2>
+		<p>还记得我们在<a href="0110whatislinux.html">第一章</a>谈到过 Unix 的 system V 版本吧？那个很纯种的 Unix 版本～
+		在那种年代底下，我们启动系统服务的管理方式被称为 SysV 的 init 脚本程序的处理方式！亦即系统核心第一支调用的程序是 init ，
+		然后 init 去唤起所有的系统所需要的服务，不论是本机服务还是网络服务就是了。</p>
+		<p>基本上 init 的管理机制有几个特色如下：</p>
+		<ul>
+		<li><span class="text_import2">服务的启动、关闭与观察等方式</span>：<br>
+			所有的服务启动脚本通通放置于 /etc/init.d/ 底下，基本上都是使用 bash shell script 所写成的脚本程序，需要启动、关闭、重新启动、观察状态时，
+			可以透过如下的方式来处理：<ul style="margin-top: 10px;"><li>启动：/etc/init.d/daemon start</li><li>关闭：/etc/init.d/daemon stop</li>
+			<li>重新启动：/etc/init.d/daemon restart</li><li>状态观察：/etc/init.d/daemon status</li></ul></li>
+		<li style="margin-top: 15px;"><span class="text_import2">服务启动的分类</span>：<br>init 服务的分类中，依据服务是独立启动或被一只总管程序管理而分为两大类：
+			<ul style="margin-top: 10px;"><li>独立启动模式 (stand alone)：服务独立启动，该服务直接常驻于内存中，提供本机或用户的服务行为，反应速度快。</li>
+			<li style="margin-top: 10px;">总管程序 (super daemon)：由特殊的 xinetd 或 inetd 这两个总管程序提供 socket 对应或 port 对应的管理。当没有用户要求某 socket 或 port 时，
+			所需要的服务是不会被启动的。若有用户要求时， xinetd 总管才会去唤醒相对应的服务程序。当该要求结束时，这个服务也会被结束掉～
+			因为透过 xinetd 所总管，因此这个家伙就被称为 super daemon。好处是可以透过 super daemon 来进行服务的时程、连接需求等的控制，缺点是唤醒服务需要一点时间的延迟。</li></ul></li>
+		<li style="margin-top: 15px;"><span class="text_import2">服务的相依性问题</span>：<br>服务是可能会有相依性的～例如，你要启动网络服务，但是系统没有网络，
+			那怎么可能可以唤醒网络服务呢？如果你需要连接到外部取得认证服务器的连接，但该连接需要另一个A服务的需求，问题是，A服务没有启动，
+			因此，你的认证服务就不可能会成功启动的！这就是所谓的服务相依性问题。<span class="text_import2">init 在管理员自己手动处理这些服务时，是没有办法协助相依服务的唤醒的</span>！</li>
+		<li style="margin-top: 15px;"><span class="text_import2">运行等级的分类</span>：<br>上面说到 init 是开机后核心主动调用的，
+			然后 init 可以根据用户自订的运行等级 (runlevel) 来唤醒不同的服务，以进入不同的操作界面。基本上 Linux 提供 7 个运行等级，分别是 0, 1, 2...6 ，
+			比较重要的是 1)单人维护模式、3)纯文本模式、5)文本加图形界面。而各个运行等级的启动脚本是透过 /etc/rc.d/rc[0-6]/SXXdaemon 链接到 /etc/init.d/daemon ，
+			链接文件名 (SXXdaemon) 的功能为： S为启动该服务，XX是数字，为启动的顺序。由于有 SXX 的设置，因此在开机时可以『依序运行』所有需要的服务，
+			同时也能解决相依服务的问题。这点与管理员自己手动处理不太一样就是了。</li>
+		<li style="margin-top: 15px;"><span class="text_import2">制定运行等级缺省要启动的服务</span>：<br>若要创建如上提到的 SXXdaemon 的话，不需要管理员手动创建链接档，
+			透过如下的指令可以来处理缺省启动、缺省不启动、观察缺省启动否的行为：<ul style="margin-top: 10px;"><li>缺省要启动： chkconfig daemon on</li>
+			<li>缺省不启动： chkconfig daemon off</li><li>观察缺省为启动否： chkconfig --list daemon</li></ul></li>
+		<li style="margin-top: 15px;"><span class="text_import2">运行等级的切换行为</span>：<br>当你要从纯文本界面 (runlevel 3) 切换到图形界面 (runlevel 5)，
+			不需要手动启动、关闭该运行等级的相关服务，只要『 init 5 』即可切换，init 这小子会主动去分析 /etc/rc.d/rc[35].d/ 这两个目录内的脚本，
+			然后启动转换 runlevel 中需要的服务～就完成整体的 runlevel 切换。</li>
+		</ul>
+		<p>基本上 init 主要的功能都写在上头了，重要的指令包括 daemon 本身自己的脚本 (/etc/init.d/daemon) 、xinetd 这个特殊的总管程序 (super daemon)、设置缺省开机启动的 chkconfig，
+		以及会影响到运行等级的 init N 等。虽然 CentOS 7 已经不使用 init 来管理服务了，不过因为考量到某些脚本没有办法直接塞入 systemd 的处理，因此这些脚本还是被保留下来，
+		所以，我们在这里还是稍微介绍了一下。更多更详细的数据就请自己查找旧版本啰！如下就是一个可以参考的版本：</p>
+		<ul><li><a href="0560daemons//0560daemons-centos5.html">0560daemons/0560daemons-centos5.html</a></li></ul>
+	<br></div><br>
+	<a id="daemon_type_systemd"></a>
+	<div class="block2"><div class="gototop"><a href="0560daemons.html#top">Top</a></div>
+	<h2>17.1.2 systemd 使用的 unit 分类</h2>
+		<p>从 CentOS 7.x 以后，Red Hat 系列的 distribution 放弃沿用多年的 System V 开机启动服务的流程，就是前一小节提到的 init 启动脚本的方法，
+		改用 systemd 这个启动服务管理机制～那么 systemd 有什么好处呢？</p>
+		<ul>
+		<li style="margin-top: 15px;"><span class="text_import2">平行处理所有服务，加速开机流程</span>：<br>
+		旧的 init 启动脚本是『一项一项任务依序启动』的模式，因此不相依的服务也是得要一个一个的等待。但目前我们的硬件主机系统与操作系统几乎都支持多核心架构了，
+		没道理未相依的服务不能同时启动啊！systemd 就是可以让所有的服务同时启动，因此你会发现到，系统启动的速度变快了！</li>
+		<li style="margin-top: 15px;"><span class="text_import2">一经要求就回应的 on-demand 启动方式</span>：<br>
+		systemd 全部就是仅有一只 systemd 服务搭配 systemctl 指令来处理，无须其他额外的指令来支持。不像 systemV 还要 init, chkconfig, service... 等等指令。
+		此外， systemd 由于常驻内存，因此任何要求 (on-demand) 都可以立即处理后续的 daemon 启动的任务。</li>
+		<li style="margin-top: 15px;"><span class="text_import2">服务相依性的自我检查</span>：<br>
+		由于 systemd 可以自订服务相依性的检查，因此如果 B 服务是架构在 A 服务上面启动的，那当你在没有启动 A 服务的情况下仅手动启动 
+		B 服务时， systemd 会自动帮你启动 A 服务喔！这样就可以免去管理员得要一项一项服务去分析的麻烦～(如果读者不是新手，应该会有印象，当你没有启动网络，
+		但却启动 NIS/NFS 时，那个开机时的 timeout 甚至可达到 10~30 分钟...)</li>
+		<li style="margin-top: 15px;"><span class="text_import2">依 daemon 功能分类</span>：<br>
+		systemd 旗下管理的服务非常多，包山包海啦～为了厘清所有服务的功能，因此，首先 systemd 先定义所有的服务为一个服务单位 (unit)，并将该 unit 归类到不同的服务类型 (type) 去。
+		旧的 init 仅分为 stand alone 与 super daemon 实在不够看，systemd 将服务单位 (unit) 区分为 service, socket, target, path, snapshot, timer 等多种不同的类型(type)，
+		方便管理员的分类与记忆。</li>
+		<li style="margin-top: 15px;"><span class="text_import2">将多个 daemons 集合成为一个群组</span>：<br>
+		如同 systemV 的 init 里头有个 runlevel 的特色，systemd 亦将许多的功能集合成为一个所谓的 target 项目，这个项目主要在设计操作环境的建置，
+		所以是集合了许多的 daemons，亦即是运行某个 target 就是运行好多个 daemon 的意思！</li>
+		<li style="margin-top: 15px;"><span class="text_import2">向下兼容旧有的 init 服务脚本</span>：<br>
+		基本上， systemd 是可以兼容于 init 的启动脚本的，因此，旧的 init 启动脚本也能够透过 systemd 来管理，只是更高端的 systemd 功能就没有办法支持就是了。</li>
+		</ul>
+		<p>虽然如此，不过 systemd 也是有些地方无法完全取代 init 的！包括：</p>
+		<ul>
+		<li>在 runlevel 的对应上，大概仅有 runlevel 1, 3, 5 有对应到 systemd 的某些 target 类型而已，没有全部对应；</li>
+		<li>全部的 systemd 都用 systemctl 这个管理程序管理，而 systemctl 支持的语法有限制，不像 /etc/init.d/daemon 就是纯脚本可以自订参数，systemctl 不可自订参数。；</li>
+		<li>如果某个服务启动是管理员自己手动运行启动，而不是使用 systemctl 去启动的 (例如你自己手动输入 crond 以启动 crond 服务)，那么 systemd
+		将无法侦测到该服务，而无法进一步管理。</li>
+		<li>systemd 启动过程中，无法与管理员透过 standard input 传入消息！因此，自行撰写 systemd 的启动设置时，务必要取消交互机制～(连透过启动时传进的标准输入消息也要避免！)</li>
+		</ul>
+		<p>不过，光是同步启动服务脚本这个功能就可以节省你很多开机的时间～同时 systemd 还有很多特殊的服务类型 (type) 可以提供更多有趣的功能！确实值得学一学～
+		而且 CentOS 7 已经用了 systemd 了！想不学也不行啊～哈哈哈！好～既然要学，首先就得要针对 systemd 管理的 unit 来了解一下。</p>
+		<ul class="toplist"><li>systemd 的设置档放置目录</li></ul>
+		<p>基本上， systemd 将过去所谓的 daemon 运行脚本通通称为一个服务单位 (unit)，而每种服务单位依据功能来区分时，就分类为不同的类型 (type)。
+		基本的类型有包括系统服务、数据监听与交换的插槽档服务 (socket)、保存系统状态的快照类型、提供不同类似运行等级分类的操作环境 (target) 等等。
+		哇！这么多类型，那设置时会不会很麻烦呢？其实还好，因为设置档都放置在底下的目录中：</p>
+		<ul>
+		<li><span class="text_import2">/usr/lib/systemd/system/</span>：每个服务最主要的启动脚本设置，有点类似以前的 /etc/init.d 底下的文件；</li>
+		<li><span class="text_import2">/run/systemd/system/</span>：系统运行过程中所产生的服务脚本，这些脚本的优先序要比 /usr/lib/systemd/system/ 高！</li>
+		<li><span class="text_import2">/etc/systemd/system/</span>：管理员依据主机系统的需求所创建的运行脚本，其实这个目录有点像以前 /etc/rc.d/rc5.d/Sxx 
+		之类的功能！运行优先序又比 /run/systemd/system/ 高喔！</li>
+		</ul>
+		<p>也就是说，到底系统开机会不会运行某些服务其实是看 /etc/systemd/system/ 底下的设置，所以该目录底下就是一大堆链接档。而实际运行的 systemd 启动脚本设置档，
+		其实都是放置在 /usr/lib/systemd/system/ 底下的喔！因此如果你想要修改某个服务启动的设置，应该要去 /usr/lib/systemd/system/ 底下修改才对！
+		/etc/systemd/system/ 仅是链接到正确的运行脚本设置档而已。所以想要看运行脚本设置，应该就得要到 /usr/lib/systemd/system/ 底下去查阅才对！</p>
+		<ul class="toplist"><li>systemd 的 unit 类型分类说明</li></ul>
+		<p>那 /usr/lib/systemd/system/ 以下的数据如何区分上述所谓的不同的类型 (type) 呢？很简单！看扩展名！举例来说，我们来瞧瞧上一章谈到的 vsftpd 这个范例的启动脚本设置，
+		还有 crond 与纯文本模式的 multi-user 设置：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">ll /usr/lib/systemd/system/ | grep -E '(vsftpd|multi|cron)'</span>
+<span class="term_write">-rw-r--r--. 1 root root  284  7月 30  2014 crond.service</span>
+-rw-r--r--. 1 root root  567  3月  6 06:51 multipathd.service
+<span class="term_write">-rw-r--r--. 1 root root  524  3月  6 13:48 multi-user.target</span>
+drwxr-xr-x. 2 root root 4096  5月  4 17:52 multi-user.target.wants
+lrwxrwxrwx. 1 root root   17  5月  4 17:52 runlevel2.target -&gt; multi-user.target
+lrwxrwxrwx. 1 root root   17  5月  4 17:52 runlevel3.target -&gt; multi-user.target
+lrwxrwxrwx. 1 root root   17  5月  4 17:52 runlevel4.target -&gt; multi-user.target
+<span class="term_write">-rw-r--r--. 1 root root  171  6月 10  2014 vsftpd.service</span>
+-rw-r--r--. 1 root root  184  6月 10  2014 vsftpd@.service
+-rw-r--r--. 1 root root   89  6月 10  2014 vsftpd.target
+<span class="term_say"># 比较重要的是上头提供的那三行特殊字体的部份！</span>
+</pre></td></tr></tbody></table>
+		<p>所以我们可以知道 vsftpd 与 crond 其实算是系统服务 (service)，而 multi-user 要算是运行环境相关的类型 (target type)。根据这些扩展名的类型，
+		我们大概可以找到几种比较常见的 systemd 的服务类型如下：</p>
+<table class="news" style="width: 95%">
+<tbody><tr class="theader"><td style="width: 80px">扩展名</td><td>主要服务功能</td></tr>
+<tr>
+	<td>.service</td>
+	<td>一般服务类型 (service unit)：主要是系统服务，包括服务器本身所需要的本机服务以及网络服务都是！比较经常被使用到的服务大多是这种类型！
+	所以，这也是最常见的类型了！</td>
+</tr>
+<tr>
+	<td>.socket</td>
+	<td><p style="margin-top: 0">内部进程数据交换的插槽服务 (socket unit)：主要是 IPC (Inter-process communication) 的传输消息插槽档 (socket file) 功能。
+	这种类型的服务通常在监控消息传递的插槽档，当有透过此插槽档传递消息来说要链接服务时，就依据当时的状态将该用户的要求发送到对应的 daemon，
+	若 daemon 尚未启动，则启动该 daemon 后再发送用户的要求。</p>
+	<p style="margin-bottom: 0">使用 socket 类型的服务一般是比较不会被用到的服务，因此在开机时通常会稍微延迟启动的时间 
+	(因为比较没有这么常用嘛！)。一般用于本机服务比较多，例如我们的图形界面很多的软件都是透过 socket 来进行本机进程数据交换的行为。
+	(这与早期的 xinetd 这个 super daemon 有部份的相似喔！)</p></td>
+</tr>
+<tr>
+	<td>.target</td>
+	<td>运行环境类型 (target unit)：其实是一群 unit 的集合，例如上面表格中谈到的 multi-user.target 其实就是一堆服务的集合～也就是说，
+	选择运行 multi-user.target 就是运行一堆其他 .service 或/及 .socket 之类的服务就是了！</td>
+</tr>
+<tr>
+	<td>.mount<br>.automount</td>
+	<td>文件系统挂载相关的服务 (automount unit / mount unit)：例如来自网络的自动挂载、NFS 文件系统挂载等与文件系统相关性较高的进程管理。</td>
+</tr>
+<tr>
+	<td>.path</td>
+	<td>侦测特定文件或目录类型 (path unit)：某些服务需要侦测某些特定的目录来提供队列服务，例如最常见的打印服务，就是透过侦测打印队列目录来启动打印功能！
+	这时就得要 .path 的服务类型支持了！</td>
+</tr>
+<tr>
+	<td>.timer</td>
+	<td>循环运行的服务 (timer unit)：这个东西有点类似 anacrontab 喔！不过是由 systemd 主动提供的，比 anacrontab 更加有弹性！</td>
+</tr>
+</tbody></table>
+		<p>其中又以 .service 的系统服务类型最常见了！因为我们一堆网络服务都是透过这种类型来设计的啊！接下来，让我们来谈谈如何管理这些服务的启动与关闭。</p>
+	<br></div>
+</div>
+<a id="systemctl_cmd"></a>
+<div class="block1">
+<h2>17.2 透过 systemctl 管理服务</h2>
+	<p>基本上， systemd 这个启动服务的机制，主要是透过一只名为 systemctl 的指令来处理的！跟以前 systemV 需要 service / chkconfig / setup / init 等指令来协助不同，
+	systemd 就是仅有 systemctl 这个指令来处理而已呦！所以全部的行为都得要使用 systemctl 的意思啦！有没有很难？其实习惯了之后，
+	鸟哥是觉得 systemctl 还挺好用的！ ^_^</p>
+	<a id="systemctl_start"></a>
+	<div class="block2"><div class="gototop"><a href="0560daemons.html#top">Top</a></div>
+	<h2>17.2.1 透过 systemctl 管理单一服务 (service unit) 的启动/开机启动与观察状态</h2>
+		<p>在开始这个小节之前，鸟哥要先来跟大家报告一下，那就是：<span class="text_import2">一般来说，服务的启动有两个阶段，一个是『开机的时候设置要不要启动这个服务』，
+		以及『你现在要不要启动这个服务』</span>，这两者之间有很大的差异喔！举个例子来说，假如我们现在要『立刻取消 atd 这个服务』时，正规的方法 (不要用 kill) 要怎么处理？</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">systemctl [command] [unit]</span>
+<span class="term_say">command 主要有：
+start     ：立刻启动后面接的 unit
+stop      ：立刻关闭后面接的 unit
+restart   ：立刻关闭后启动后面接的 unit，亦即运行 stop 再 start 的意思
+reload    ：不关闭后面接的 unit 的情况下，重新加载设置档，让设置生效
+enable    ：设置下次开机时，后面接的 unit 会被启动
+disable   ：设置下次开机时，后面接的 unit 不会被启动
+status    ：目前后面接的这个 unit 的状态，会列出有没有正在运行、开机缺省运行否、登录等信息等！
+is-active ：目前有没有正在运作中
+is-enabled：开机时有没有缺省要启用这个 unit</span>
+<span class="term_hd">范例一：看看目前 atd 这个服务的状态为何？</span>
+[root@study ~]# <span class="term_command">systemctl status atd.service</span>
+atd.service - Job spooling tools
+   <span class="term_write">Loaded: loaded (/usr/lib/systemd/system/atd.service; enabled)
+   Active: active (running)</span> since Mon 2015-08-10 19:17:09 CST; 5h 42min ago
+ Main PID: 1350 (atd)
+   CGroup: /system.slice/atd.service
+           └─1350 /usr/sbin/atd -f
+Aug 10 19:17:09 study.centos.vbird systemd[1]: Started Job spooling tools.
+<span class="term_say"># 重点在第二、三行喔～
+# Loaded：这行在说明，开机的时候这个 unit 会不会启动，enabled 为开机启动，disabled 开机不会启动
+# Active：现在这个 unit 的状态是正在运行 (running) 或没有运行 (dead)
+# 后面几行则是说明这个 unit 进程的 PID 状态以及最后一行显示这个服务的注册表信息！
+# 注册表信息格式为：『时间』 『消息发送主机』 『哪一个服务的消息』 『实际消息内容』
+# 所以上面的显示消息是：这个 atd 缺省开机就启动，而且现在正在运作的意思！</span>
+<span class="term_hd">范例二：正常关闭这个 atd 服务</span>
+[root@study ~]# <span class="term_command">systemctl stop atd.service</span>
+[root@study ~]# <span class="term_command">systemctl status atd.service</span>
+atd.service - Job spooling tools
+   Loaded: loaded (/usr/lib/systemd/system/atd.service; <span class="term_write">enabled</span>)
+   <span class="term_write">Active: inactive (dead)</span> since Tue 2015-08-11 01:04:55 CST; 4s ago
+  Process: 1350 ExecStart=/usr/sbin/atd -f $OPTS (code=exited, status=0/SUCCESS)
+ Main PID: 1350 (code=exited, status=0/SUCCESS)
+Aug 10 19:17:09 study.centos.vbird systemd[1]: Started Job spooling tools.
+<span class="term_write">Aug 11 01:04:55 study.centos.vbird systemd[1]: Stopping Job spooling tools...
+Aug 11 01:04:55 study.centos.vbird systemd[1]: Stopped Job spooling tools.</span>
+<span class="term_say"># 目前这个 unit 下次开机还是会启动，但是现在是没在运作的状态中！同时，
+# 最后两行为添加加的登录消息，告诉我们目前的系统状态喔！</span>
+</pre></td></tr></tbody></table>
+		<p>上面的范例中，我们已经关掉了 atd 啰！这样作才是对的！不应该使用 kill 的方式来关掉一个正常的服务喔！否则 systemctl 会无法继续监控该服务的！
+		那就比较麻烦。而使用 systemtctl status atd 的输出结果中，第 2, 3 两行很重要～因为那个是告知我们该 unit 下次开机会不会缺省启动，以及目前启动的状态！
+		相当重要！最底下是这个 unit 的注册表～如果你的这个 unit 曾经出错过，观察这个地方也是相当重要的！</p>
+		<p>那么现在问个问题，你的 atd 现在是关闭的，未来重新开机后，这个服务会不会再次的启动呢？答案是？当然会！
+		因为上面出现的第二行中，它是 enabled 的啊！这样理解所谓的『现在的状态』跟『开机时缺省的状态』两者的差异了吗？</p>
+		<p>好！再回到 systemctl status atd.service 的第三行，不是有个 Active 的 daemon 现在状态吗？除了 running 跟 dead 之外，
+		有没有其他的状态呢？有的～基本上有几个常见的状态：</p>
+		<ul>
+		<li style="margin-top: 10px"><span class="text_import2">active (running)</span>：正有一只或多只进程正在系统中运行的意思，举例来说，正在运行中的 vsftpd 就是这种模式。</li>
+		<li style="margin-top: 10px"><span class="text_import2">active (exited)</span>：仅运行一次就正常结束的服务，目前并没有任何进程在系统中运行。
+			举例来说，开机或者是挂载时才会进行一次的 quotaon 功能，就是这种模式！
+			quotaon 不须一直运行～只须运行一次之后，就交给文件系统去自行处理啰！通常用 bash shell 写的小型服务，大多是属于这种类型 (无须常驻内存)。</li>
+		<li style="margin-top: 10px"><span class="text_import2">active (waiting)</span>：正在运行当中，不过还再等待其他的事件才能继续处理。举例来说，打印的队列相关服务就是这种状态！
+			虽然正在启动中，不过，也需要真的有队列进来 (打印工作) 这样他才会继续唤醒打印机服务来进行下一步打印的功能。</li>
+		<li style="margin-top: 10px"><span class="text_import2">inactive</span>：这个服务目前没有运作的意思。</li>
+		</ul>
+		<p>既然 daemon 目前的状态就有这么多种了，那么 daemon 的缺省状态有没有可能除了 enable/disable 之外，还有其他的情况呢？当然有！</p>
+		<ul>
+		<li style="margin-top: 10px"><span class="text_import2">enabled</span>：这个 daemon 将在开机时被运行</li>
+		<li style="margin-top: 10px"><span class="text_import2">disabled</span>：这个 daemon 在开机时不会被运行</li>
+		<li style="margin-top: 10px"><span class="text_import2">static</span>：这个 daemon 不可以自己启动 (enable 不可)，不过可能会被其他的 enabled 的服务来唤醒 (相依属性的服务)</li>
+		<li style="margin-top: 10px"><span class="text_import2">mask</span>：这个 daemon 无论如何都无法被启动！因为已经被强制注销 (非删除)。可透过 systemctl unmask 方式改回原本状态</li>
+		</ul>
+		<ul class="toplist"><li>服务启动/关闭与观察的练习</li></ul>
+<table class="exam"><tbody><tr><td>
+问题：
+<div>
+	找到系统中名为 chronyd 的服务，观察此服务的状态，观察完毕后，将此服务设置为： 1)开机不会启动 2)现在状况是关闭的情况！
+</div>
+回答：
+<div>
+	我们直接使用指令的方式来查找与设置看看：<br>
+<table class="term"><tbody><tr><td class="term"><pre><span class="term_hd"># 1. 观察一下状态，确认是否为关闭/未启动呢？</span>
+[root@study ~]# <span class="term_command">systemctl status chronyd.service</span>
+hronyd.service - NTP client/server
+   Loaded: loaded (/usr/lib/systemd/system/chronyd.service; <span class="term_write">enabled</span>)
+   Active: <span class="term_write">active (running)</span> since Mon 2015-08-10 19:17:07 CST; 24h ago
+<span class="term_say">.....(底下省略).....</span>
+<span class="term_hd"># 2. 由上面知道目前是启动的，因此立刻将他关闭，同时开机不会启动才行！</span>
+[root@study ~]# <span class="term_command">systemctl stop chronyd.service</span>
+[root@study ~]# <span class="term_command">systemctl disable chronyd.service</span>
+rm '/etc/systemd/system/multi-user.target.wants/chronyd.service'
+<span class="term_say"># 看得很清楚～其实就是从 /etc/systemd/system 底下删除一条链接文件而已～</span>
+[root@study ~]# <span class="term_command">systemctl status chronyd.service</span>
+chronyd.service - NTP client/server
+   Loaded: loaded (/usr/lib/systemd/system/chronyd.service; <span class="term_write">disabled</span>)
+   Active: <span class="term_write">inactive (dead)</span>
+<span class="term_say"># 如此则将 chronyd 这个服务完整的关闭了！</span>
+</pre></td></tr></tbody></table>
+</div>
+</td></tr></tbody></table>
+		<p>上面是一个很简单的练习，你先不要知道 chronyd 是啥东西，只要知道透过这个方式，可以将一个服务关闭就是了！好！那再来一个练习，
+		看看有没有问题呢？</p>
+<table class="exam"><tbody><tr><td>
+问题：
+<div>
+	因为我根本没有打印机安装在服务器上，目前也没有网络打印机，因此我想要将 cups 服务整个关闭，是否可以呢？
+</div>
+回答：
+<div>
+	同样的，眼见为凭，我们就动手作看看：<br>
+<table class="term"><tbody><tr><td class="term"><pre><span class="term_hd"># 1. 先看看 cups 的服务是开还是关？</span>
+[root@study ~]# <span class="term_command">systemctl status cups.service</span>
+cups.service - CUPS Printing Service
+   Loaded: loaded (/usr/lib/systemd/system/cups.service; enabled)
+   Active: inactive (dead) since Tue 2015-08-11 19:19:20 CST; 3h 29min ago
+<span class="term_say"># 有趣得很！竟然是 enable 但是却是 inactive 耶！相当特别！</span>
+<span class="term_hd"># 2. 那就直接关闭，同时确认没有启动喔！</span>
+[root@study ~]# <span class="term_command">systemctl stop    cups.service</span>
+[root@study ~]# <span class="term_command">systemctl disable cups.service</span>
+rm '/etc/systemd/system/multi-user.target.wants/cups.path'
+rm '/etc/systemd/system/sockets.target.wants/cups.socket'
+rm '/etc/systemd/system/printer.target.wants/cups.service'
+<span class="term_say"># 也是非常特别！竟然一口气取消掉三个链接档！也就是说，这三个文件可能是有相依性的问题喔！</span>
+[root@study ~]# <span class="term_command">netstat -tlunp | grep cups</span>
+<span class="term_say"># 现在应该不会出现任何数据！因为根本没有 cups 的任务在运行当中～所以不会有 port 产生</span>
+<span class="term_hd"># 3. 尝试启动 cups.socket 监听用户端的需求喔！</span>
+[root@study ~]# <span class="term_command">systemctl start cups.socket</span>
+[root@study ~]# <span class="term_command">systemctl status cups.service cups.socket cups.path</span>
+cups.service - CUPS Printing Service
+   Loaded: loaded (/usr/lib/systemd/system/cups.service; disabled)
+   Active: <span class="term_write">inactive (dead)</span> since Tue 2015-08-11 22:57:50 CST; 3min 41s ago
+cups.socket - CUPS Printing Service Sockets
+   Loaded: loaded (/usr/lib/systemd/system/cups.socket; disabled)
+   Active: <span class="term_write">active (listening)</span> since Tue 2015-08-11 22:56:14 CST; 5min ago
+cups.path - CUPS Printer Service Spool
+   Loaded: loaded (/usr/lib/systemd/system/cups.path; disabled)
+   Active: <span class="term_write">inactive (dead)</span>
+<span class="term_say"># 确定仅有 cups.socket 在启动，其他的并没有启动的状态！</span>
+<span class="term_hd"># 4. 尝试使用 lp 这个指令来打印看看？</span>
+[root@study ~]# <span class="term_command">echo "testing" | lp</span>
+lp: Error - no default destination available. <span class="term_note"># 实际上就是没有打印机！所以有错误也没关系！</span>
+[root@study ~]# <span class="term_command">systemctl status cups.service</span>
+cups.service - CUPS Printing Service
+   Loaded: loaded (/usr/lib/systemd/system/cups.service; disabled)
+   Active: <span class="term_write">active (running)</span> since Tue 2015-08-11 23:03:18 CST; 34s ago
+[root@study ~]# <span class="term_command">netstat -tlunp | grep cups</span>
+tcp        0      0 127.0.0.1:631    0.0.0.0:*   LISTEN     25881/cupsd
+tcp6       0      0 ::1:631          :::*        LISTEN     25881/cupsd
+<span class="term_say"># 见鬼！竟然 cups 自动被启动了！明明我们都没有驱动他啊！怎么回事啊？</span>
+</pre></td></tr></tbody></table>
+</div>
+</td></tr></tbody></table>
+		<p>上面这个范例的练习在让您了解一下，很多服务彼此之间是有相依性的！cups 是一种打印服务，这个打印服务会启用 port 631 来提供网络打印机的打印功能。
+		但是其实我们无须一直启动 631 端口口吧？因此，多了一个名为 cups.socket 的服务，这个服务可以在『用户有需要打印时，才会主动唤醒 cups.service 』的意思！
+		因此，如果你仅是 disable/stop cups.service 而忘记了其他两个服务的话，那么当有用户向其他两个 cups.path, cups.socket 提出要求时，
+		cups.service 就会被唤醒！所以，你关掉也没用！</p>
+		<ul class="toplist"><li>强迫服务注销 (mask) 的练习</li></ul>
+		<p>比较正规的作法是，要关闭 cups.service 时，连同其他两个会唤醒 service 的 cups.socket 与 cups.path 通通关闭，那就没事了！
+		比较不正规的作法是，那就强迫 cups.service 注销吧！透过 mask 的方式来将这个服务注销看看！</p>
+<table class="term"><tbody><tr><td class="term"><pre><span class="term_hd"># 1. 保持刚刚的状态，关闭 cups.service，启动 cups.socket，然后注销 cups.servcie</span>
+[root@study ~]# <span class="term_command">systemctl stop cups.service</span>
+[root@study ~]# <span class="term_command">systemctl mask cups.service</span>
+ln -s '/dev/null' '/etc/systemd/system/cups.service'
+<span class="term_say"># 喔耶～其实这个 mask 注销的动作，只是让启动的脚本变成空的设备而已！</span>
+[root@study ~]# <span class="term_command">systemctl status cups.service</span>
+cups.service
+   Loaded: <span class="term_write">masked (/dev/null)</span>
+   Active: inactive (dead) since Tue 2015-08-11 23:14:16 CST; 52s ago
+[root@study ~]# <span class="term_command">systemctl start cups.service</span>
+Failed to issue method call: Unit cups.service is masked.  <span class="term_note"># 再也无法唤醒！</span>
+</pre></td></tr></tbody></table>
+		<p>上面的范例你可以仔细推敲一下～原来整个启动的脚本设置档被链接到 /dev/null 这个空设备～因此，无论如何你是再也无法启动这个 cups.service 了！
+		透过这个 mask 功能，你就可以不必管其他相依服务可能会启动到这个想要关闭的服务了！虽然是非正规，不过很有效！ ^_^</p>
+		<p>那如何取消注销呢？当然就是 unmask 即可啊！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">systemctl unmask cups.service</span>
+rm '/etc/systemd/system/cups.service'
+[root@study ~]# <span class="term_command">systemctl status cups.service</span>
+cups.service - CUPS Printing Service
+   Loaded: loaded (/usr/lib/systemd/system/cups.service; disabled)
+   Active: inactive (dead) since Tue 2015-08-11 23:14:16 CST; 4min 35s ago
+<span class="term_say"># 好佳在有恢复正常！</span>
+</pre></td></tr></tbody></table>
+	<br></div><br>
+	<a id="systemctl_list"></a>
+	<div class="block2"><div class="gototop"><a href="0560daemons.html#top">Top</a></div>
+	<h2>17.2.2 透过 systemctl 观察系统上所有的服务</h2>
+		<p>上一小节谈到的是单一服务的启动/关闭/观察，以及相依服务要注销的功能。那系统上面有多少的服务存在呢？这个时候就得要透过 list-units 及 list-unit-files 来观察了！
+		细部的用法如下：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">systemctl [command] [--type=TYPE] [--all]</span>
+<span class="term_say">command:
+    list-units      ：依据 unit 列出目前有启动的 unit。若加上 --all 才会列出没启动的。
+    list-unit-files ：依据 /usr/lib/systemd/system/ 内的文件，将所有文件列表说明。
+--type=TYPE：就是之前提到的 unit type，主要有 service, socket, target 等</span>
+<span class="term_hd">范例一：列出系统上面有启动的 unit</span>
+[root@study ~]# <span class="term_command">systemctl</span>
+UNIT                      LOAD   ACTIVE SUB       DESCRIPTION
+proc-sys-fs-binfmt_mis... loaded active waiting   Arbitrary Executable File Formats File System
+sys-devices-pc...:0:1:... loaded active plugged   QEMU_HARDDISK
+sys-devices-pc...0:1-0... loaded active plugged   QEMU_HARDDISK
+sys-devices-pc...0:0-1... loaded active plugged   QEMU_DVD-ROM
+<span class="term_say">.....(中间省略).....</span>
+vsftpd.service            loaded active running   Vsftpd ftp daemon
+<span class="term_say">.....(中间省略).....</span>
+cups.socket               loaded failed failed    CUPS Printing Service Sockets
+<span class="term_say">.....(中间省略).....</span>
+LOAD   = Reflects whether the unit definition was properly loaded.
+ACTIVE = The high-level unit activation state, i.e. generalization of SUB.
+SUB    = The low-level unit activation state, values depend on unit type.
+<span class="term_write">141 loaded units listed. Pass --all to see loaded but inactive units, too.
+To show all installed unit files use 'systemctl list-unit-files'.</span>
+<span class="term_say"># 列出的项目中，主要的意义是：
+# UNIT   ：项目的名称，包括各个 unit 的类别 (看扩展名)
+# LOAD   ：开机时是否会被加载，缺省 systemctl 显示的是有加载的项目而已喔！
+# ACTIVE ：目前的状态，须与后续的 SUB 搭配！就是我们用 systemctl status 观察时，active 的项目！
+# DESCRIPTION ：详细描述啰
+# cups 比较有趣，因为刚刚被我们玩过，所以 ACTIVE 竟然是 failed 的喔！被玩死了！ ^_^
+# 另外，systemctl 都不加参数，其实缺省就是 list-units 的意思！</span>
+<span class="term_hd">范例二：列出所有已经安装的 unit 有哪些？</span>
+[root@study ~]# <span class="term_command">systemctl list-unit-files</span>
+UNIT FILE                                   STATE
+proc-sys-fs-binfmt_misc.automount           static
+dev-hugepages.mount                         static
+dev-mqueue.mount                            static
+proc-fs-nfsd.mount                          static
+<span class="term_say">.....(中间省略).....</span>
+systemd-tmpfiles-clean.timer                static
+336 unit files listed.
+</pre></td></tr></tbody></table>
+		<p>使用 systemctl list-unit-files 会将系统上所有的服务通通列出来～而不像 list-units 仅以 unit 分类作大致的说明。
+		至于 STATE 状态就是前两个小节谈到的开机是否会加载的那个状态项目啰！主要有 enabled / disabled / mask / static 等等。</p>
+		<p>假设我不想要知道这么多的 unit 项目，我只想要知道 service 这种类别的 daemon 而已，而且不论是否已经启动，通通要列出来！
+		那该如何是好？</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">systemctl list-units --type=service --all</span>
+<span class="term_say"># 只剩下 *.service 的项目才会出现喔！</span>
+<span class="term_hd">范例一：查找系统上是否有以 cpu 为名的服务？</span>
+[root@study ~]# <span class="term_command">systemctl list-units --type=service --all | grep cpu</span>
+cpupower.service  loaded inactive dead    Configure CPU power related settings
+<span class="term_say"># 确实有喔！可以改变 CPU 电源管理机制的服务哩！</span>
+</pre></td></tr></tbody></table>
+	<br></div><br>
+	<a id="systemctl_target"></a>
+	<div class="block2"><div class="gototop"><a href="0560daemons.html#top">Top</a></div>
+	<h2>17.2.3 透过 systemctl 管理不同的操作环境 (target unit)</h2>
+		<p>透过上个小节我们知道系统上所有的 systemd 的 unit 观察的方式，那么可否列出跟操作界面比较有关的 target 项目呢？
+		很简单啊！就这样搞一下：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">systemctl list-units --type=target --all</span>
+UNIT                   LOAD   ACTIVE   SUB    DESCRIPTION
+basic.target           loaded active   active Basic System
+cryptsetup.target      loaded active   active Encrypted Volumes
+emergency.target       loaded inactive dead   Emergency Mode
+final.target           loaded inactive dead   Final Step
+getty.target           loaded active   active Login Prompts
+graphical.target       loaded active   active Graphical Interface
+local-fs-pre.target    loaded active   active Local File Systems (Pre)
+local-fs.target        loaded active   active Local File Systems
+multi-user.target      loaded active   active Multi-User System
+network-online.target  loaded inactive dead   Network is Online
+network.target         loaded active   active Network
+nss-user-lookup.target loaded inactive dead   User and Group Name Lookups
+paths.target           loaded active   active Paths
+remote-fs-pre.target   loaded active   active Remote File Systems (Pre)
+remote-fs.target       loaded active   active Remote File Systems
+rescue.target          loaded inactive dead   Rescue Mode
+shutdown.target        loaded inactive dead   Shutdown
+slices.target          loaded active   active Slices
+sockets.target         loaded active   active Sockets
+sound.target           loaded active   active Sound Card
+swap.target            loaded active   active Swap
+sysinit.target         loaded active   active System Initialization
+syslog.target          not-found inactive dead   syslog.target
+time-sync.target       loaded inactive dead   System Time Synchronized
+timers.target          loaded active   active Timers
+umount.target          loaded inactive dead   Unmount All Filesystems
+LOAD   = Reflects whether the unit definition was properly loaded.
+ACTIVE = The high-level unit activation state, i.e. generalization of SUB.
+SUB    = The low-level unit activation state, values depend on unit type.
+26 loaded units listed.
+To show all installed unit files use 'systemctl list-unit-files'.
+</pre></td></tr></tbody></table>
+		<p>喔！在我们的 CentOS 7.1 的缺省情况下，就有 26 个 target unit 耶！而跟操作界面相关性比较高的 target 主要有底下几个：</p>
+		<ul>
+		<li>graphical.target：就是文本加上图形界面，这个项目已经包含了底下的 multi-user.target 项目！</li>
+		<li>multi-user.target：纯文本模式！</li>
+		<li>rescue.target：在无法使用 root 登录的情况下，systemd 在开机时会多加一个额外的暂时系统，与你原本的系统无关。这时你可以取得 root 的权限来维护你的系统。
+			但是这是额外系统，因此可能需要动到 chroot 的方式来取得你原有的系统喔！再后续的章节我们再来谈！</li>
+		<li>emergency.target：紧急处理系统的错误，还是需要使用 root 登录的情况，在无法使用 rescue.target 时，可以尝试使用这种模式！</li>
+		<li>shutdown.target：就是关机的流程。</li>
+		<li>getty.target：可以设置你需要几个 tty 之类的，如果想要降低 tty 的项目，可以修改这个东西的设置档！</li>
+		</ul>
+		<p>正常的模式是 multi-user.target 以及 graphical.target 两个，救援方面的模式主要是 rescue.target 以及更严重的 emergency.target。
+		如果要修改可提供登录的 tty 数量，则修改 getty.target 项目。基本上，我们最常使用的当然就是 multi-user 以及 graphical 啰！
+		那么我如何知道目前的模式是哪一种？又得要如何修改呢？底下来玩一玩吧！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">systemctl [command] [unit.target]</span>
+<span class="term_say">选项与参数：
+command:
+    get-default ：取得目前的 target 
+    set-default ：设置后面接的 target 成为缺省的操作模式
+    isolate     ：切换到后面接的模式</span>
+<span class="term_hd">范例一：我们的测试机器缺省是图形界面，先观察是否真为图形模式，再将缺省模式转为文本界面</span>
+[root@study ~]# <span class="term_command">systemctl get-default </span>
+graphical.target  <span class="term_note"># 果然是图形界面喔！</span>
+[root@study ~]# <span class="term_command">systemctl set-default multi-user.target</span>
+[root@study ~]# <span class="term_command">systemctl get-default </span>
+multi-user.target
+<span class="term_hd">范例二：在不重新开机的情况下，将目前的操作环境改为纯文本模式，关掉图形界面</span>
+[root@study ~]# <span class="term_command">systemctl isolate multi-user.target</span>
+<span class="term_hd">范例三：若需要重新取得图形界面呢？</span>
+[root@study ~]# <span class="term_command">systemctl isolate graphical.target</span>
+</pre></td></tr></tbody></table>
+		<p>要注意，改变 graphical.target 以及 multi-user.target 是透过 isolate 来处理的！鸟哥刚刚接触到 systemd 的时候，在 multi-user.target 环境下转成 graphical.target 时，
+		可以透过 systemctl start graphical.target 喔！然后鸟哥就以为关闭图形界面即可回到 multi-user.target 的！但使用 systemctl stop graphical.target
+		却完全不理鸟哥～这才发现错了...在 service 部份用 start/stop/restart 才对，在 target 项目则请使用 isolate (隔离不同的操作模式) 才对！</p>
+		<p>在正常的切换情况下，使用上述 isolate 的方式即可。不过为了方便起见， systemd 也提供了数个简单的指令给我们切换操作模式之用喔！
+		大致上如下所示：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">systemctl poweroff </span> <span class="term_note">系统关机</span>
+[root@study ~]# <span class="term_command">systemctl reboot   </span> <span class="term_note">重新开机</span>
+[root@study ~]# <span class="term_command">systemctl suspend  </span> <span class="term_note">进入暂停模式</span>
+[root@study ~]# <span class="term_command">systemctl hibernate</span> <span class="term_note">进入休眠模式</span>
+[root@study ~]# <span class="term_command">systemctl rescue   </span> <span class="term_note">强制进入救援模式</span>
+[root@study ~]# <span class="term_command">systemctl emergency</span> <span class="term_note">强制进入紧急救援模式</span>
+</pre></td></tr></tbody></table>
+		<p>关机、重新开机、救援与紧急模式这没啥问题，那么什么是暂停与休眠模式呢？</p>
+		<ul>
+		<li>suspend：暂停模式会将系统的状态数据保存到内存中，然后关闭掉大部分的系统硬件，当然，并没有实际关机喔！
+		当用户按下唤醒机器的按钮，系统数据会重内存中回复，然后重新驱动被大部分关闭的硬件，就开始正常运作！唤醒的速度较快。</li>
+		<li style="margin-top: 10px;">hibernate：休眠模式则是将系统状态保存到硬盘当中，保存完毕后，将电脑关机。当用户尝试唤醒系统时，系统会开始正常运作，
+		然后将保存在硬盘中的系统状态恢复回来。因为数据是由硬盘读出，因此唤醒的性能与你的硬盘速度有关。</li>
+		</ul>
+	<br></div><br>
+	<a id="systemctl_deps"></a>
+	<div class="block2"><div class="gototop"><a href="0560daemons.html#top">Top</a></div>
+	<h2>17.2.4 透过 systemctl 分析各服务之间的相依性</h2>
+		<p>我们在本章一开始谈到 systemd 的时候就有谈到相依性的问题克服，那么，如何追踪某一个 unit 的相依性呢？
+		举例来说好了，我们怎么知道 graphical.target 会用到 multi-user.target 呢？那 graphical.target 底下还有哪些东西呢？
+		底下我们就来谈一谈：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">systemctl list-dependencies [unit] [--reverse]</span>
+<span class="term_say">选项与参数：
+--reverse ：反向追踪谁使用这个 unit 的意思！</span>
+<span class="term_hd">范例一：列出目前的 target 环境下，用到什么特别的 unit </span>
+[root@study ~]# <span class="term_command">systemctl get-default</span>
+multi-user.target
+[root@study ~]# <span class="term_command">systemctl list-dependencies</span>
+default.target
+├─abrt-ccpp.service
+├─abrt-oops.service
+├─vsftpd.service
+├─basic.target
+│ ├─alsa-restore.service
+│ ├─alsa-state.service
+<span class="term_say">.....(中间省略).....</span>
+│ ├─sockets.target
+│ │ ├─avahi-daemon.socket
+│ │ ├─dbus.socket
+<span class="term_say">.....(中间省略).....</span>
+│ ├─sysinit.target
+│ │ ├─dev-hugepages.mount
+│ │ ├─dev-mqueue.mount
+<span class="term_say">.....(中间省略).....</span>
+│ └─timers.target
+│   └─systemd-tmpfiles-clean.timer
+├─getty.target
+│ └─getty@tty1.service
+└─remote-fs.target
+</pre></td></tr></tbody></table>
+		<p>因为我们前一小节的练习将缺省的操作模式变成 multi-user.target 了，因此这边使用 list-dependencies 时，所列出的 default.target 其实是 multi-user.target
+		的内容啦！根据线条连接的流程，我们也能够知道， multi-user.target 其实还会用到 basic.target + getty.target + remote-fs.target 三大项目，
+		而 basic.target 又用到了 sockets.target + sysinit.target + timers.target... 等一堆～所以啰，从这边就能够清楚的查找到每种 target 模式底下还有的相依模式。
+		那么如果要查出谁会用到 multi-user.target 呢？就这么作！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">systemctl list-dependencies --reverse</span>
+default.target
+└─graphical.target
+</pre></td></tr></tbody></table>
+		<p>reverse 本来就是反向的意思，所以加上这个选项，代表『谁还会用到我的服务』的意思～所以看得出来， multi-user.target 主要是被 graphical.target 所使用喔！
+		好～那再来，graphical.target 又使用了多少的服务呢？可以这样看：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">systemctl list-dependencies graphical.target</span>
+graphical.target
+├─accounts-daemon.service
+├─gdm.service
+├─network.service
+├─rtkit-daemon.service
+├─systemd-update-utmp-runlevel.service
+└─multi-user.target
+  ├─abrt-ccpp.service
+  ├─abrt-oops.service
+<span class="term_say">.....(底下省略).....</span>
+</pre></td></tr></tbody></table>
+		<p>所以可以看得出来，graphical.target 就是在 multi-user.target 底下再加上 accounts-daemon, gdm, network, rtkit-deamon, systemd-update-utmp-runlevel 等服务而已！
+		这样会看了吗？了解 daemon 之间的相关性也是很重要的喔！出问题时，可以找到正确的服务相依流程！</p>
+	<br></div><br>
+	<a id="systemctl_files"></a>
+	<div class="block2"><div class="gototop"><a href="0560daemons.html#top">Top</a></div>
+	<h2>17.2.5 与 systemd 的 daemon 运作过程相关的目录简介</h2>
+		<p>我们在前几小节曾经谈过比较重要的 systemd 启动脚本设置档在 /usr/lib/systemd/system/, /etc/systemd/system/ 目录下，那还有哪些目录跟系统的 daemon 运作有关呢？
+		基本上是这样的：</p>
+		<ul>
+		<li><span class="text_import2">/usr/lib/systemd/system/</span>：<br>
+			使用 CentOS 官方提供的软件安装后，缺省的启动脚本设置档都放在这里，这里的数据尽量不要修改～
+			要修改时，请到 /etc/systemd/system 底下修改较佳！</li>
+		<li style="margin-top: 10px"><span class="text_import2">/run/systemd/system/</span>：<br>
+			系统运行过程中所产生的服务脚本，这些脚本的优先序要比 /usr/lib/systemd/system/ 高！</li>
+		<li style="margin-top: 10px"><span class="text_import2">/etc/systemd/system/</span>：<br>
+			管理员依据主机系统的需求所创建的运行脚本，其实这个目录有点像以前 /etc/rc.d/rc5.d/Sxx 
+			之类的功能！运行优先序又比 /run/systemd/system/ 高喔！</li>
+		<li style="margin-top: 10px"><span class="text_import2">/etc/sysconfig/*</span>：<br>
+			几乎所有的服务都会将初始化的一些选项设置写入到这个目录下，举例来说，mandb 所要更新的 man page 索引中，需要加入的参数就写入到此目录下的 man-db 
+			当中喔！而网络的设置则写在 /etc/sysconfig/network-scripts/ 这个目录内。所以，这个目录内的文件也是挺重要的；</li>
+		<li style="margin-top: 10px"><span class="text_import2">/var/lib/</span>：<br>
+			一些会产生数据的服务都会将他的数据写入到 /var/lib/ 目录中。举例来说，数据库管理系统 Mariadb 的数据库缺省就是写入 /var/lib/mysql/ 这个目录下啦！</li>
+		<li style="margin-top: 10px"><span class="text_import2">/run/</span>：<br>
+			放置了好多 daemon 的暂存盘，包括 lock file 以及 PID file 等等。</li>
+		</ul>
+		<p>我们知道 systemd 里头有很多的本机会用到的 socket 服务，里头可能会产生很多的 socket file ～那你怎么知道这些 socket file 放置在哪里呢？
+		很简单！还是透过 systemctl 来管理！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">systemctl list-sockets</span>
+LISTEN                          UNIT                         ACTIVATES
+/dev/initctl                    systemd-initctl.socket       systemd-initctl.service
+/dev/log                        systemd-journald.socket      systemd-journald.service
+/run/dmeventd-client            dm-event.socket              dm-event.service
+/run/dmeventd-server            dm-event.socket              dm-event.service
+/run/lvm/lvmetad.socket         lvm2-lvmetad.socket          lvm2-lvmetad.service
+/run/systemd/journal/socket     systemd-journald.socket      systemd-journald.service
+/run/systemd/journal/stdout     systemd-journald.socket      systemd-journald.service
+/run/systemd/shutdownd          systemd-shutdownd.socket     systemd-shutdownd.service
+/run/udev/control               systemd-udevd-control.socket systemd-udevd.service
+/var/run/avahi-daemon/socket    avahi-daemon.socket          avahi-daemon.service
+/var/run/cups/cups.sock         cups.socket                  cups.service
+/var/run/dbus/system_bus_socket dbus.socket                  dbus.service
+/var/run/rpcbind.sock           rpcbind.socket               rpcbind.service
+@ISCSIADM_ABSTRACT_NAMESPACE    iscsid.socket                iscsid.service
+@ISCSID_UIP_ABSTRACT_NAMESPACE  iscsiuio.socket              iscsiuio.service
+kobject-uevent 1                systemd-udevd-kernel.socket  systemd-udevd.service
+16 sockets listed.
+Pass --all to see loaded but inactive sockets, too.
+</pre></td></tr></tbody></table>
+		<p>这样很清楚的就能够知道正在监听本机服务需求的 socket file 所在的文件名位置啰！</p>
+		<a id="etc_services"></a>
+		<ul class="toplist"><li>网络服务与端口口对应简介</li></ul>
+		<p>从<a href="0440processcontrol.html">第十六章</a>与前一小节对服务的说明后，你应该要知道的是，
+		系统所有的功能都是某些进程所提供的，而进程则是透过触发程序而产生的。同样的，系统提供的网络服务当然也是这样的！
+		只是由于网络牵涉到 TCP/IP 的概念，所以显的比较复杂一些就是了。</p>
+		<p>玩过互联网 (Internet) 的朋友应该知道 IP 这玩意儿，大家都说 IP 就是代表你的主机在互联网上面的『门牌号码』。
+		但是你的主机总是可以提供非常多的网络服务而不止一项功能而已，但我们仅有一个 IP 呢！当用户端连接过来我们的主机时，
+		我们主机是如何分辨不同的服务要求呢？那就是透过端口号 (port number) 啦！端口号简单的想像，他就是你家门牌上面的第几层楼！
+		这个 IP 与 port 就是互联网连接的最重要机制之一啰。我们拿底下的网址来说明：</p>
+		<ul>
+		<li><a href="http://ftp.ksu.edu.tw/" target="_blank">http://ftp.ksu.edu.tw/</a></li>
+		<li><a href="ftp://ftp.ksu.edu.tw/" target="_blank">ftp://ftp.ksu.edu.tw/</a></li>
+		</ul>
+		<p>有没有发现，两个网址都是指向 ftp.ksu.edu.tw 这个昆山科大的 FTP 网站，但是浏览器上面显示的结果却是不一样的？
+		是啊！这是因为我们指向不同的服务嘛！一个是 http 这个 WWW 的服务，一个则是 ftp 
+		这个文件传输服务，当然显示的结果就不同了。</p>
+	<a id="fig17.2.1"></a>
+	<div style="text-align:center; margin: 0 auto 0 auto; "><img src="./vbird_files/port_daemon.gif" alt="port 与 daemon 的对应" title="port 与 daemon 的对应" style="border: 0px solid black; padding: 10px "></div>
+	<div style="text-align: center;">图17.2.1、port 与 daemon 的对应</div>
+		<p>事实上，为了统一整个互联网的端口号对应服务的功能，好让所有的主机都能够使用相同的机制来提供服务与要求服务，
+		所以就有了『通信协定』这玩意儿。也就是说，有些约定俗成的服务都放置在同一个端口号上面啦！举例来说，
+		网址列上面的 http 会让浏览器向 WWW 服务器的 80 端口号进行连接的要求！而 WWW 服务器也会将 httpd 这个软件启动在 port 80，
+		这样两者才能够达成连接的！</p>
+		<p>嗯！那么想一想，系统上面有没有什么设置可以让服务与端口号对应在一起呢？那就是 /etc/services 啦！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">cat /etc/services</span>
+<span class="term_say">....(前面省略)....</span>
+ftp             21/tcp
+ftp             21/udp          fsp fspd
+ssh             22/tcp                          # The Secure Shell (SSH) Protocol
+ssh             22/udp                          # The Secure Shell (SSH) Protocol
+<span class="term_say">....(中间省略)....</span>
+http            80/tcp          www www-http    # WorldWideWeb HTTP
+http            80/udp          www www-http    # HyperText Transfer Protocol
+<span class="term_say">....(底下省略)....</span>
+<span class="term_say"># 这个文件的内容是以底下的方式来编排的：
+# &lt;daemon name&gt;   &lt;port/封包协定&gt;   &lt;该服务的说明&gt;</span>
+</pre></td></tr></tbody></table>
+		<p>像上面说的是，第一栏为 daemon 的名称、第二栏为该 daemon 所使用的端口号与网络数据封包协定，
+		封包协定主要为可靠连接的 TCP 封包以及较快速但为非连接导向的 UDP 封包。
+		举个例子说，那个远程连接机制使用的是 ssh 这个服务，而这个服务的使用的端口号为 22 ！就是这样啊！</p>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		请特别注意！虽然有的时候你可以借由修改 /etc/services 来更改一个服务的端口号，不过并不建议如此做，
+		因为很有可能会造成一些协定的错误情况！这里特此说明一番呦！(除非你要架设一个地下网站，否则的话，使用 
+		/etc/services 原先的设置就好啦！)
+		</fieldset><br>
+	<br></div><br>
+	<a id="systemctl_network"></a>
+	<div class="block2"><div class="gototop"><a href="0560daemons.html#top">Top</a></div>
+	<h2>17.2.6 关闭网络服务</h2>
+		<p>当你第一次使用 systemctl 去观察本机服务器启动的服务时，不知道有没有吓一跳呢？怎么随随便便 CentOS 7.x 就给我启动了几乎 100 多个以上的 daemon？
+		会不会有事啊？没关系啦！因为 systemd 将许多原本不被列为 daemon 的进程都纳入到 systemd 自己的管辖监测范围内，因此就多了很多 daemon 存在！
+		那些大部分都属于 Linux 系统基础运作所需要的环境，没有什么特别需求的话，最好都不要更动啦！除非你自己知道自己需要什么。</p>
+		<p>除了本机服务之外，其实你一定要观察的，反而是网络服务喔！虽然网络服务缺省有 SELinux 管理，不过，在鸟哥的立场上，
+		我还是建议非必要的网络服务就关闭他！那么什么是网络服务呢？基本上，会产生一个网络监听端口口 (port) 的进程，你就可以称他是个网络服务了！
+		那么如何观察网络端口口？就这样追踪啊！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">netstat -tlunp</span>
+Proto Recv-Q Send-Q Local Address   Foreign Address  State    PID/Program name
+tcp        0      0 0.0.0.0:22      0.0.0.0:*        LISTEN   1340/sshd
+tcp        0      0 127.0.0.1:25    0.0.0.0:*        LISTEN   2387/master
+tcp6       0      0 :::555          :::*             LISTEN   29113/vsftpd
+tcp6       0      0 :::22           :::*             LISTEN   1340/sshd
+tcp6       0      0 ::1:25          :::*             LISTEN   2387/master
+udp        0      0 0.0.0.0:5353    0.0.0.0:*                 750/avahi-daemon: r
+udp        0      0 0.0.0.0:36540   0.0.0.0:*                 750/avahi-daemon: r
+</pre></td></tr></tbody></table>
+		<p>如上表所示，我们的系统上至少开了 22, 25, 555, 5353, 36540 这几个端口口～而其中 5353, 36540 是由 avahi-daemon 这个东西所启动的！
+		接下来我们使用 systemctl 去观察一下，到底有没有 avahi-daemon 为开头的服务呢？</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">systemctl list-units --all | grep avahi-daemon</span>
+avahi-daemon.service   loaded active   running   Avahi mDNS/DNS-SD Stack
+avahi-daemon.socket    loaded active   running   Avahi mDNS/DNS-SD Stack Activation Socket
+</pre></td></tr></tbody></table>
+		<p>透过追查，知道这个 avahi-daemon 的目的是在局域网路进行类似网芳的搜索，因此这个服务可以协助你在区网内随时了解随插即用的设备！
+		包括笔记型电脑等，只要连上你的区网，你就能够知道谁进来了。问题是，你可能不要这个协定啊！所以，那就关闭他吧！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">systemctl stop avahi-daemon.service</span>
+[root@study ~]# <span class="term_command">systemctl stop avahi-daemon.socket</span>
+[root@study ~]# <span class="term_command">systemctl disable avahi-daemon.service avahi-daemon.socket</span>
+[root@study ~]# <span class="term_command">netstat -tlunp</span>
+Proto Recv-Q Send-Q Local Address   Foreign Address  State    PID/Program name
+tcp        0      0 0.0.0.0:22      0.0.0.0:*        LISTEN   1340/sshd
+tcp        0      0 127.0.0.1:25    0.0.0.0:*        LISTEN   2387/master
+tcp6       0      0 :::555          :::*             LISTEN   29113/vsftpd
+tcp6       0      0 :::22           :::*             LISTEN   1340/sshd
+tcp6       0      0 ::1:25          :::*             LISTEN   2387/master
+</pre></td></tr></tbody></table>
+		<p>一般来说，你的本机服务器至少需要 25 号端口口，而 22 号端口口则最好加上防火墙来管理远程连接登录比较妥当～因此，上面的端口口中，
+		除了 555 是我们上一章因为测试而产生的之外，这样的系统能够被爬墙的机会已经少很多了！ ^_^！OK！现在如果你的系统里面有一堆网络端口口在监听，
+		而你根本不知道那是干麻用的，鸟哥建议你，现在就透过上面的方式，关闭他吧！</p>
+	<br></div>
+</div>
+<a id="systemd_cfg"></a>
+<div class="block1">
+<h2>17.3 systemctl 针对 service 类型的设置档</h2>
+	<p>以前，我们如果想要创建系统服务，就得要到 /etc/init.d/ 底下去创建相对应的 bash shell script 来处理。那么现在 systemd 的环境底下，
+	如果我们想要设置相关的服务启动环境，那应该如何处理呢？这就是本小节的任务啰！</p>
+	<a id="systemd_cfg_dir"></a>
+	<div class="block2"><div class="gototop"><a href="0560daemons.html#top">Top</a></div>
+	<h2>17.3.1 systemctl 设置档相关目录简介</h2>
+		<p>现在我们知道服务的管理是透过 systemd，而 systemd 的设置档大部分放置于 /usr/lib/systemd/system/ 目录内。但是 Red Hat 官方文档指出，
+		该目录的文件主要是原本软件所提供的设置，建议不要修改！而要修改的位置应该放置于 /etc/systemd/system/ 目录内。举例来说，如果你想要额外修改 vsftpd.service 的话，
+		他们建议要放置到哪些地方呢？</p>
+		<ul>
+		<li>/usr/lib/systemd/system/<span class="text_import2">vsftpd.service</span>：官方发布的缺省设置档；</li>
+		<li>/etc/systemd/system/<span class="text_import2">vsftpd.service.d</span>/custom.conf：在 /etc/systemd/system 
+			底下创建与设置档相同文件名的目录，但是要加上 .d 的扩展名。然后在该目录下创建设置档即可。另外，设置档最好附文件名取名为 .conf 较佳！
+			在这个目录下的文件会『累加其他设置』进入 /usr/lib/systemd/system/vsftpd.service 内喔！</li>
+		<li>/etc/systemd/system/<span class="text_import2">vsftpd.service.wants</span>/*：此目录内的文件为链接档，设置相依服务的链接。意思是启动了 
+			vsftpd.service 之后，最好再加上这目录底下建议的服务。</li>
+		<li>/etc/systemd/system/<span class="text_import2">vsftpd.service.requires</span>/*：此目录内的文件为链接档，设置相依服务的链接。意思是在启动 
+			vsftpd.service 之前，需要事先启动哪些服务的意思。</li>
+		</ul>
+		<p>基本上，在设置档里面你都可以自由设置相依服务的检查，并且设置加入到哪些 target 里头去。但是如果是已经存在的设置档，或者是官方提供的设置档，
+		Red Hat 是建议你不要修改原设置，而是到上面提到的几个目录去进行额外的客制化设置比较好！当然，这见仁见智～如果你硬要修改原始的 /usr/lib/systemd/system 
+		底下的设置档，那也是 OK 没问题的！并且也能够减少许多设置档的增加～鸟哥自己认为，这样也不错！反正，就完全是个人喜好啰～</p>
+	<br></div><br>
+	<a id="systemd_cfg_options"></a>
+	<div class="block2"><div class="gototop"><a href="0560daemons.html#top">Top</a></div>
+	<h2>17.3.2 systemctl 设置档的设置项目简介</h2>
+		<p>了解了设置档的相关目录与文件之后，再来，当然得要了解一下设置档本身的内容了！让我们先来瞧一瞧 sshd.service 的内容好了！
+		原本想拿 vsftpd.service 来讲解，不过该文件的内容比较阳春，还是看一下设置项目多一些的 sshd.service 好了！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">cat /usr/lib/systemd/system/sshd.service</span>
+[Unit]           <span class="term_note"># 这个项目与此 unit 的解释、运行服务相依性有关</span>
+Description=OpenSSH server daemon
+After=network.target sshd-keygen.service
+Wants=sshd-keygen.service
+[Service]        <span class="term_note"># 这个项目与实际运行的指令参数有关</span>
+EnvironmentFile=/etc/sysconfig/sshd
+ExecStart=/usr/sbin/sshd -D $OPTIONS
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=on-failure
+RestartSec=42s
+[Install]        <span class="term_note"># 这个项目说明此 unit 要挂载哪个 target 底下</span>
+WantedBy=multi-user.target
+</pre></td></tr></tbody></table>
+		<p>分析上面的设置档，我们大概能够将整个设置分为三个部份，就是：</p>
+		<ul class="mylist">
+		<li>[Unit]： unit 本身的说明，以及与其他相依 daemon 的设置，包括在什么服务之后才启动此 unit 之类的设置值；</li>
+		<li>[Service], [Socket], [Timer], [Mount], [Path]..：不同的 unit type 就得要使用相对应的设置项目。我们拿的是 sshd.service 来当范本，所以这边就使用 [Service] 来设置。
+			这个项目内主要在规范服务启动的脚本、环境设置档文件名、重新启动的方式等等。</li>
+		<li>[Install]：这个项目就是将此 unit 安装到哪个 target 里面去的意思！</li>
+		</ul>
+		<p>至于设置档内有些设置规则还是得要说明一下：</p>
+		<ul>
+		<li>设置项目通常是可以重复的，例如我可以重复设置两个 After 在设置档中，不过，后面的设置会取代前面的喔！因此，如果你想要将设置值归零，
+			可以使用类似『 After= 』的设置，亦即该项目的等号后面什么都没有，就将该设置归零了 (reset)。</li>
+		<li>如果设置参数需要有『是/否』的项目 (布尔值, boolean)，你可以使用 1, yes, true, on 代表启动，用 0, no, false, off 代表关闭！随你喜好选择啰！</li>
+		<li>空白行、开头为 # 或 ; 的那一行，都代表注解！</li>
+		</ul>
+		<p>每个部份里面还有很多的设置细项，我们使用一个简单的表格来说明每个项目好了！</p>
+<table class="news" style="width: 95%">
+<tbody><tr class="theader"><td colspan="2">[Unit] 部份</td></tr>
+<tr class="theader"><td>设置参数</td><td>参数意义说明</td></tr>
+<tr>
+	<td>Description</td>
+	<td>就是当我们使用 systemctl list-units 时，会输出给管理员看的简易说明！当然，使用 systemctl status 输出的此服务的说明，也是这个项目！</td></tr>
+<tr>
+	<td>Documentation</td>
+	<td>这个项目在提供管理员能够进行进一步的文档查找的功能！提供的文档可以是如下的数据：
+		<ul style="margin-top:0; margin-bottom: 0">
+		<li>Documentation=http://www....</li>
+		<li>Documentation=man:sshd(8)</li>
+		<li>Documentation=file:/etc/ssh/sshd_config</li></ul></td></tr>
+<tr>
+	<td>After</td>
+	<td>说明此 unit 是在哪个 daemon 启动之后才启动的意思！基本上仅是说明服务启动的顺序而已，并没有强制要求里头的服务一定要启动后此 unit 才能启动。
+		以 sshd.service 的内容为例，该文件提到 After 后面有 network.target 以及 sshd-keygen.service，但是若这两个 unit 没有启动而强制启动 sshd.service 的话，
+		那么 sshd.service 应该还是能够启动的！这与 Requires 的设置是有差异的喔！</td></tr>
+<tr>
+	<td>Before</td>
+	<td>与 After 的意义相反，是在什么服务启动前最好启动这个服务的意思。不过这仅是规范服务启动的顺序，并非强制要求的意思。</td></tr>
+<tr>
+	<td>Requires</td>
+	<td>明确的定义此 unit 需要在哪个 daemon 启动后才能够启动！就是设置相依服务啦！如果在此项设置的前导服务没有启动，那么此 unit 就不会被启动！</td></tr>
+<tr>
+	<td>Wants</td>
+	<td>与 Requires 刚好相反，规范的是这个 unit 之后最好还要启动什么服务比较好的意思！不过，并没有明确的规范就是了！主要的目的是希望创建让用户比较好操作的环境。
+		因此，这个 Wants 后面接的服务如果没有启动，其实不会影响到这个 unit 本身！</td></tr>
+<tr>
+	<td>Conflicts</td>
+	<td>代表冲突的服务！亦即这个项目后面接的服务如果有启动，那么我们这个 unit 本身就不能启动！我们 unit 有启动，则此项目后的服务就不能启动！
+		反正就是冲突性的检查啦！</td></tr>
+</tbody></table>
+		<p>接下来了解一下在 [Service] 当中有哪些项目可以使用！</p>
+<table class="news" style="width: 95%">
+<tbody><tr class="theader"><td colspan="2">[Service] 部份</td></tr>
+<tr class="theader"><td>设置参数</td><td>参数意义说明</td></tr>
+<tr>
+	<td>Type</td>
+	<td>说明这个 daemon 启动的方式，会影响到 ExecStart 喔！一般来说，有底下几种类型
+	<ul style="margin-top: 0; margin-bottom: 0">
+		<li>simple：默认值，这个 daemon 主要由 ExecStart 接的指令串来启动，启动后常驻于内存中。</li>
+		<li>forking：由 ExecStart 启动的进程透过 spawns 延伸出其他子进程来作为此 daemon 的主要服务。原生的父进程在启动结束后就会终止运作。
+		传统的 unit 服务大多属于这种项目，例如 httpd 这个 WWW 服务，当 httpd 的进程因为运作过久因此即将终结了，则 systemd 会再重新生出另一个子进程持续运作后，
+		再将父进程删除。据说这样的性能比较好！！</li>
+		<li>oneshot：与 simple 类似，不过这个进程在工作完毕后就结束了，不会常驻在内存中。</li>
+		<li>dbus：与 simple 类似，但这个 daemon 必须要在取得一个 D-Bus 的名称后，才会继续运作！因此设置这个项目时，通常也要设置 BusName= 才行！</li>
+		<li>idle：与 simple 类似，意思是，要运行这个 daemon 必须要所有的工作都顺利运行完毕后才会运行。这类的 daemon 通常是开机到最后才运行即可的服务！</li>
+	</ul>
+	比较重要的项目大概是 simple, forking 与 oneshot 了！毕竟很多服务需要子进程 (forking)，而有更多的动作只需要在开机的时候运行一次(oneshot)，例如文件系统的检查与挂载啊等等的。
+	</td></tr>
+<tr>
+	<td>EnvironmentFile</td>
+	<td>可以指定启动脚本的环境设置档！例如 sshd.service 的设置档写入到 /etc/sysconfig/sshd 当中！你也可以使用 Environment= 后面接多个不同的 Shell 变量来给予设置！</td></tr>
+<tr style="font-weight: bolder">
+	<td>ExecStart</td>
+	<td>就是实际运行此 daemon 的指令或脚本程序。你也可以使用 ExecStartPre (之前) 以及 ExecStartPost (之后) 两个设置项目来在实际启动服务前，进行额外的指令行为。
+		但是你得要特别注意的是，指令串仅接受『指令  参数  参数...』的格式，不能接受 &lt;, &gt;, &gt;&gt;, |, &amp; 等特殊字符，很多的 bash 语法也不支持喔！
+		所以，要使用这些特殊的字符时，最好直接写入到指令脚本里面去！不过，上述的语法也不是完全不能用，亦即，若要支持比较完整的 bash 语法，那你得要使用 Type=oneshot 才行喔！
+		其他的 Type 才不能支持这些字符。</td></tr>
+<tr>
+	<td>ExecStop</td>
+	<td>与 systemctl stop 的运行有关，关闭此服务时所进行的指令。</td></tr>
+<tr>
+	<td>ExecReload</td>
+	<td>与 systemctl reload 有关的指令行为</td></tr>
+<tr>
+	<td>Restart</td>
+	<td>当设置 Restart=1 时，则当此 daemon 服务终止后，会再次的启动此服务。举例来说，如果你在 tty2 使用文本界面登录，操作完毕后注销，基本上，这个时候 tty2 就已经结束服务了。
+		但是你会看到屏幕又立刻产生一个新的 tty2 的登录画面等待你的登录！那就是 Restart 的功能！除非使用 systemctl 强制将此服务关闭，否则这个服务会源源不绝的一直重复产生！</td></tr>
+<tr>
+	<td>RemainAfterExit</td>
+	<td>当设置为 RemainAfterExit=1 时，则当这个 daemon 所属的所有进程都终止之后，此服务会再尝试启动。这对于 Type=oneshot 的服务很有帮助！</td></tr>
+<tr>
+	<td>TimeoutSec</td>
+	<td>若这个服务在启动或者是关闭时，因为某些缘故导致无法顺利『正常启动或正常结束』的情况下，则我们要等多久才进入『强制结束』的状态！</td></tr>
+<tr>
+	<td>KillMode</td>
+	<td>可以是 process, control-group, none 的其中一种，如果是 process 则 daemon 终止时，只会终止主要的进程 (ExecStart 接的后面那串指令)，如果是 control-group 时，
+		则由此 daemon 所产生的其他 control-group 的进程，也都会被关闭。如果是 none 的话，则没有进程会被关闭喔！</td></tr>
+<tr>
+	<td>RestartSec</td>
+	<td>与 Restart 有点相关性，如果这个服务被关闭，然后需要重新启动时，大概要 sleep 多少时间再重新启动的意思。缺省是 100ms (毫秒)。</td></tr>
+</tbody></table>
+	<p>最后，再来看看那么 Install 内还有哪些项目可用？</p>
+<table class="news" style="width: 95%">
+<tbody><tr class="theader"><td colspan="2">[Install] 部份</td></tr>
+<tr class="theader"><td>设置参数</td><td>参数意义说明</td></tr>
+<tr>
+	<td>WantedBy</td>
+	<td>这个设置后面接的大部分是 *.target unit ！意思是，这个 unit 本身是附挂在哪一个 target unit 底下的！一般来说，大多的服务性质的 unit 都是附挂在 multi-user.target 底下！</td></tr>
+<tr>
+	<td>Also</td>
+	<td>当目前这个 unit 本身被 enable 时，Also 后面接的 unit 也请 enable 的意思！也就是具有相依性的服务可以写在这里呢！</td></tr>
+<tr>
+	<td>Alias</td>
+	<td>进行一个链接的别名的意思！当 systemctl enable 相关的服务时，则此服务会进行链接档的创建！以 multi-user.target 为例，这个家伙是用来作为缺省操作环境 default.target 的规划，
+		因此当你设置用成 default.target 时，这个 /etc/systemd/system/default.target 就会链接到 /usr/lib/systemd/system/multi-user.target 啰！</td></tr>
+</tbody></table>
+		<p>大致的项目就有这些，接下来让我们根据上面这些数据来进行一些简易的操作吧！</p>
+	<br></div><br>
+	<a id="systemd_cfg_vsftpd"></a>
+	<div class="block2"><div class="gototop"><a href="0560daemons.html#top">Top</a></div>
+	<h2>17.3.3 两个 vsftpd 运作的实例</h2>
+		<p>我们在上一章将 vsftpd 的 port 改成 555 号了。不过，因为某些原因，所以你可能需要使用到两个端口口，分别是正常的 21 以及特殊的 555 ！
+		这两个 port 都启用的情况下，你可能就得要使用到两个设置档以及两个启动脚本设置了！现在假设是这样：</p>
+		<ul>
+		<li>缺省的 port 21：使用 /etc/vsftpd/vsftpd.conf 设置档，以及 /usr/lib/systemd/system/vsftpd.service 设置脚本；</li>
+		<li>特殊的 port 555：使用 /etc/vsftpd/vsftpd2.conf 设置档，以及 /etc/systemd/system/vsftpd2.service 设置脚本。</li>
+		</ul>
+		<p>我们可以这样作：</p>
+<table class="term"><tbody><tr><td class="term"><pre><span class="term_hd"># 1. 先创建好所需要的设置档</span>
+[root@study ~]# <span class="term_command">cd /etc/vsftpd</span>
+[root@study vsftpd]# <span class="term_command">cp vsftpd.conf vsftpd2.conf</span>
+[root@study vsftpd]# <span class="term_command">vim vsftpd.conf</span>
+<span class="term_write">#listen_port=555</span>
+[root@study vsftpd]# <span class="term_command">diff vsftpd.conf vsftpd2.conf</span>
+128c128
+&lt; #listen_port=555
+---
+&gt; listen_port=555
+<span class="term_say"># 注意这两个设置档的差别喔！只有这一行不同而已！</span>
+<span class="term_hd"># 2. 开始处理启动脚本设置</span>
+[root@study vsftpd]# <span class="term_command">cd /etc/systemd/system</span>
+[root@study system]# <span class="term_command">cp /usr/lib/systemd/system/vsftpd.service vsftpd2.service</span>
+[root@study system]# <span class="term_command">vim vsftpd2.service</span>
+[Unit]
+<span class="term_write">Description=Vsftpd second ftp daemon</span>
+After=network.target
+[Service]
+Type=forking
+ExecStart=/usr/sbin/vsftpd <span class="term_write">/etc/vsftpd/vsftpd2.conf</span>
+[Install]
+WantedBy=multi-user.target
+<span class="term_say"># 重点在改了 vsftpd2.conf 这个设置档喔！</span>
+<span class="term_hd"># 3. 重新加载 systemd 的脚本设置档内容</span>
+[root@study system]# <span class="term_command">systemctl daemon-reload</span>
+[root@study system]# <span class="term_command">systemctl list-unit-files --all | grep vsftpd</span>
+vsftpd.service                              enabled
+<span class="term_write">vsftpd2.service                             disabled</span>
+vsftpd@.service                             disabled
+vsftpd.target                               disabled
+[root@study system]# <span class="term_command">systemctl status vsftpd2.service</span>
+vsftpd2.service - Vsftpd second ftp daemon
+   Loaded: loaded (/etc/systemd/system/vsftpd2.service; disabled)
+   Active: inactive (dead)
+[root@study system]# <span class="term_command">systemctl restart vsftpd.service vsftpd2.service</span>
+[root@study system]# <span class="term_command">systemctl enable  vsftpd.service vsftpd2.service</span>
+[root@study system]# <span class="term_command">systemctl status  vsftpd.service vsftpd2.service</span>
+vsftpd.service - Vsftpd ftp daemon
+   Loaded: loaded (/usr/lib/systemd/system/vsftpd.service; enabled)
+   Active: active (running) since Wed 2015-08-12 22:00:17 CST; 35s ago
+ Main PID: 12670 (vsftpd)
+   CGroup: /system.slice/vsftpd.service
+           └─12670 /usr/sbin/vsftpd /etc/vsftpd/vsftpd.conf
+Aug 12 22:00:17 study.centos.vbird systemd[1]: Started Vsftpd ftp daemon.
+vsftpd2.service - Vsftpd second ftp daemon
+   Loaded: loaded (/etc/systemd/system/vsftpd2.service; enabled)
+   Active: active (running) since Wed 2015-08-12 22:00:17 CST; 35s ago
+ Main PID: 12672 (vsftpd)
+   CGroup: /system.slice/vsftpd2.service
+           └─12672 /usr/sbin/vsftpd /etc/vsftpd/vsftpd2.conf
+[root@study system]# <span class="term_command">netstat -tlnp </span>
+Active Internet connections (only servers)
+Proto Recv-Q Send-Q Local Address  Foreign Address   State    PID/Program name
+tcp        0      0 0.0.0.0:22     0.0.0.0:*         LISTEN   1340/sshd
+tcp        0      0 127.0.0.1:25   0.0.0.0:*         LISTEN   2387/master
+<span class="term_write">tcp6       0      0 :::555         :::*              LISTEN   12672/vsftpd
+tcp6       0      0 :::21          :::*              LISTEN   12670/vsftpd</span>
+tcp6       0      0 :::22          :::*              LISTEN   1340/sshd
+tcp6       0      0 ::1:25         :::*              LISTEN   2387/master
+</pre></td></tr></tbody></table>
+		<p>很简单的将你的 systemd 所管理的 vsftpd 做了另一个服务！未来如果有相同的需求，同样的方法作一遍即可！</p>
+	<br></div><br>
+	<a id="systemd_cfg_repeat"></a>
+	<div class="block2"><div class="gototop"><a href="0560daemons.html#top">Top</a></div>
+	<h2>17.3.4 多重的重复设置方式：以 getty 为例</h2>
+		<p>我们的 CentOS 7 开机完成后，不是说有 6 个终端机可以使用吗？就是那个 tty1~tty6 的啊！那个东西是由 agetty 这个指令达成的。
+		OK！那么这个终端机的功能又是从哪个项目所提供的呢？其实，那个东东涉及很多层面，主要管理的是 getty.target 这个 target unit ，
+		不过，实际产生 tty1~tty6 的则是由 getty@.service 所提供的！咦！那个 @ 是啥东西？</p>
+		<p>先来查阅一下 /usr/lib/systemd/system/getty@.service 的内容好了：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">cat /usr/lib/systemd/system/getty@.service</span>
+[Unit]
+Description=Getty on %I
+Documentation=man:agetty(8) man:systemd-getty-generator(8)
+Documentation=http://0pointer.de/blog/projects/serial-console.html
+After=systemd-user-sessions.service plymouth-quit-wait.service
+After=rc-local.service
+Before=getty.target
+ConditionPathExists=/dev/tty0
+[Service]
+<span class="term_write">ExecStart=-/sbin/agetty --noclear %I $TERM</span>
+Type=idle
+Restart=always
+RestartSec=0
+UtmpIdentifier=%I
+TTYPath=/dev/%I
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+KillMode=process
+IgnoreSIGPIPE=no
+SendSIGHUP=yes
+[Install]
+<span class="term_write">WantedBy=getty.target</span>
+</pre></td></tr></tbody></table>
+		<p>比较重要的当然就是 ExecStart 项目啰！那么我们去 man agetty 时，发现到它的语法应该是『 agetty --noclear tty1 』之类的字样，
+		因此，我们如果要启动六个 tty 的时候，基本上应该要有六个启动设置档。亦即是可能会用到 getty1.service, getty2.service...getty6.service 才对！
+		哇！这样控管很麻烦啊～所以，才会出现这个 @ 的项目啦！咦！这个 @ 到底怎么回事呢？我们先来看看 getty@.service 的上游，亦即是 getty.target 这个东西的内容好了！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">systemctl show getty.target</span>
+<span class="term_say"># 那个 show 的指令可以将 getty.target 的缺省设置值也取出来显示！</span>
+Names=getty.target
+Wants=getty@tty1.service
+WantedBy=multi-user.target
+Conflicts=shutdown.target
+Before=multi-user.target
+After=<span class="term_write">getty@tty1.service getty@tty2.service getty@tty3.service getty@tty4.service 
+  getty@tty6.service getty@tty5.service</span>
+<span class="term_say">.....(后面省略).....</span>
+</pre></td></tr></tbody></table>
+		<p>你会发现，咦！怎么会多出六个怪异的 service 呢？我们拿 getty@tty1.service 来说明一下好了！当我们运行完 getty.target 之后，
+		他会持续要求 getty@tty1.service 等六个服务继续启动。那我们的 systemd 就会这么作：</p>
+		<ul>
+		<li>先看 /usr/lib/systemd/system/, /etc/systemd/system/ 有没有 getty@tty1.service 的设置，若有就运行，若没有则运行下一步；</li>
+		<li>找 getty@.service 的设置，若有则将 @ 后面的数据带入成 %I 的变量，进入 getty@.service 运行！</li>
+		</ul>
+		<p>这也就是说，其实 getty@tty1.service 实际上是不存在的！他主要是透过 getty@.service 来运行～也就是说， getty@.service 的目的是为了要简化多个运行的启动设置，
+		他的命名方式是这样的：</p>
+<table class="term"><tbody><tr><td class="term"><pre>源文件案：运行服务名称@.service
+运行文件：运行服务名称@范例名称.service
+</pre></td></tr></tbody></table>
+		<p>因此当有范例名称带入时，则会有一个新的服务名称产生出来！你再回头看看 getty@.service 的启动脚本：</p>
+<table class="term"><tbody><tr><td class="term"><pre>ExecStart=-/sbin/agetty --noclear %I $TERM
+</pre></td></tr></tbody></table>
+		<p>上表中那个 %I 指的就是『范例名称』！根据 getty.target 的信息输出来看，getty@tty1.service 的 %I 就是 tty1 啰！因此运行脚本就会变成『 /sbin/agetty --noclear tty1 』！
+		所以我们才有办法以一个设置档来启动多个 tty1 给用户登录啰！</p>
+		<ul class="toplist"><li>将 tty 的数量由 6 个降低到 4 个</li></ul>
+		<p>现在你应该要感到困扰的是，那么『 6 个 tty 是谁规定的』为什么不是 5 个还是 7 个？这是因为 systemd 的登录设置档 /etc/systemd/logind.conf 里面规范的啦！
+		假如你想要让 tty 数量降低到剩下 4 个的话，那么可以这样实验看看：</p>
+<table class="term"><tbody><tr><td class="term"><pre><span class="term_hd"># 1. 修改缺省的 logind.conf 内容，将原本 6 个虚拟终端机改成 4 个</span>
+[root@study ~]# <span class="term_command">vim /etc/systemd/logind.conf</span>
+[Login]
+<span class="term_write">NAutoVTs=4
+ReserveVT=0</span>
+<span class="term_say"># 原本是 6 个而且还注解，请取消注解，然后改成 4 吧！</span>
+<span class="term_hd"># 2. 关闭不小心启动的 tty5, tty6 并重新启动 getty.target 啰！</span>
+[root@study ~]# <span class="term_command">systemctl stop getty@tty5.service</span>
+[root@study ~]# <span class="term_command">systemctl stop getty@tty6.service</span>
+[root@study ~]# <span class="term_command">systemctl restart systemd-logind.service</span>
+</pre></td></tr></tbody></table>
+		<p>现在你再到桌面环境下，按下 [ctrl]+[alt]+[F1]~[F6] 就会发现，只剩下四个可用的 tty 啰！后面的 tty5, tty6 已经被放弃了！不再被启动喔！
+		好！那么我暂时需要启动 tty8 时，又该如何处理呢？需要重新创建一个脚本吗？不需要啦！可以这样作！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">systemctl start getty@tty8.service</span>
+</pre></td></tr></tbody></table>
+		<p>无须额外创建其他的启动服务设置档喔！</p>
+		<ul class="toplist"><li>暂时添加 vsftpd 到 2121 端口口</li></ul>
+		<p>不知道你有没有发现，其实在 /usr/lib/systemd/system 底下还有个特别的 vsftpd@.service 喔！来看看他的内容：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">cat /usr/lib/systemd/system/vsftpd@.service</span>
+[Unit]
+Description=Vsftpd ftp daemon
+After=network.target
+PartOf=vsftpd.target
+[Service]
+Type=forking
+ExecStart=/usr/sbin/vsftpd /etc/vsftpd/<span class="term_write">%i.conf</span>
+[Install]
+WantedBy=vsftpd.target
+</pre></td></tr></tbody></table>
+		<p>根据前面 getty@.service 的说明，我们知道在启动的脚本设置当中， %i 或 %I 就是代表 @ 后面接的范例文件名的意思！
+		那我能不能创建 vsftpd3.conf 文件，然后透过该文件来启动新的服务呢？就来玩玩看！</p>
+<table class="term"><tbody><tr><td class="term"><pre><span class="term_hd"># 1. 根据 vsftpd@.service 的建议，于 /etc/vsftpd/ 底下先创建新的设置档</span>
+[root@study ~]# <span class="term_command">cd /etc/vsftpd</span>
+[root@study vsftpd]# <span class="term_command">cp vsftpd.conf vsftpd3.conf</span>
+[root@study vsftpd]# <span class="term_command">vim vsftpd3.conf</span>
+<span class="term_write">listen_port=2121</span>
+<span class="term_hd"># 2. 暂时启动这个服务，不要永久启动他！</span>
+[root@study vsftpd]# <span class="term_command">systemctl start vsftpd@vsftpd3.service</span>
+[root@study vsftpd]# <span class="term_command">systemctl status vsftpd@vsftpd3.service</span>
+vsftpd@vsftpd3.service - Vsftpd ftp daemon
+   Loaded: loaded (/usr/lib/systemd/system/vsftpd@.service; disabled)
+   Active: active (running) since Thu 2015-08-13 01:34:05 CST; 5s ago
+[root@study vsftpd]# <span class="term_command">netstat -tlnp</span>
+Active Internet connections (only servers)
+Proto Recv-Q Send-Q Local Address  Foreign Address  State    PID/Program name
+<span class="term_write">tcp6       0      0 :::2121        :::*             LISTEN   16404/vsftpd</span>
+tcp6       0      0 :::555         :::*             LISTEN   12672/vsftpd
+tcp6       0      0 :::21          :::*             LISTEN   12670/vsftpd
+</pre></td></tr></tbody></table>
+		<p>因为我们启用了 vsftpd@vsftpd3.service ，代表要使用的设置档在 /etc/vsftpd/vsftpd3.conf 的意思！所以可以直接透过 vsftpd@.service 而无须重新设置启动脚本！
+		这样是否比前几个小节的方法还要简便呢？ ^_^。透过这个方式，你就可以使用到新的设置档啰！只是你得要注意到 @ 这个东西就是了！ ^_^</p>
+		<fieldset class="vbirdface"><legend style="font-family: serif; font-size:12pt; color: darkblue;">Tips</legend><img src="./vbird_files/vbird_face.gif" alt="鸟哥的图标" title="鸟哥的图标" style="float: right;">		聪明的读者可能立刻发现一件事，为啥这次 FTP 增加了 2121 端口口却不用修改 SELinux 呢？这是因为缺省启动小于 1024 号码以下的端口口时，
+		需要使用到 root 的权限，因此小于 1024 以下端口口的启动较可怕。而这次范例中，我们使用 2121 端口口，他对于系统的影响可能小一些 (其实一样可怕！)，
+		所以就忽略了 SELinux 的限制了！
+		</fieldset><br>	<br></div><br>
+	<a id="systemd_cfg_custom"></a>
+	<div class="block2"><div class="gototop"><a href="0560daemons.html#top">Top</a></div>
+	<h2>17.3.5 自己的服务自己作</h2>
+		<p>我们来仿真自己作一个服务吧！假设我要作一只可以备份自己系统的服务，这只脚本我放在 /backups 底下，内容有点像这样：</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">vim /backups/backup.sh</span>
+<span class="term_write">#!/bin/bash
+source="/etc /home /root /var/lib /var/spool/{cron,at,mail}"
+target="/backups/backup-system-$(date +%Y-%m-%d).tar.gz"
+[ ! -d /backups ] &amp;&amp; mkdir /backups
+tar -zcvf ${target} ${source} &amp;&gt; /backups/backup.log</span>
+[root@study ~]# <span class="term_command">chmod a+x /backups/backup.sh</span>
+[root@study ~]# <span class="term_command">ll /backups/backup.sh</span>
+<span class="term_write">-rwxr-xr-x</span>. 1 root root 220 Aug 13 01:57 /backups/backup.sh
+<span class="term_say"># 记得要有可运行的权限才可以喔！</span>
+</pre></td></tr></tbody></table>
+		<p>接下来，我们要如何设计一只名为 backup.service 的启动脚本设置呢？可以这样做喔！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">vim /etc/systemd/system/backup.service</span>
+<span class="term_write">[Unit]
+Description=backup my server
+Requires=atd.service
+[Service]
+Type=simple
+ExecStart=/bin/bash -c " echo /backups/backup.sh | at now"
+[Install]
+WantedBy=multi-user.target</span>
+<span class="term_say"># 因为 ExecStart 里面有用到 at 这个指令，因此， atd.service 就是一定要的服务！</span>
+[root@study ~]# <span class="term_command">systemctl daemon-reload</span>
+[root@study ~]# <span class="term_command">systemctl start backup.service</span>
+[root@study ~]# <span class="term_command">systemctl status backup.service</span>
+backup.service - backup my server
+   Loaded: loaded (/etc/systemd/system/backup.service; disabled)
+   Active: inactive (dead)
+Aug 13 07:50:31 study.centos.vbird systemd[1]: Starting backup my server...
+Aug 13 07:50:31 study.centos.vbird bash[20490]: job 8 at Thu Aug 13 07:50:00 2015
+Aug 13 07:50:31 study.centos.vbird systemd[1]: Started backup my server.
+<span class="term_say"># 为什么 Active 是 inactive 呢？这是因为我们的服务仅是一个简单的 script 啊！
+# 因此运行完毕就完毕了，不会继续存在内存中喔！</span>
+</pre></td></tr></tbody></table>
+		<p>完成上述的动作之后，以后你都可以直接使用 systemctl start backup.service 进行系统的备份了！而且会直接丢进 atd 的管理中，
+		你就无须自己手动用 at 去处理这项任务了～好像还不赖喔！ ^_^</p>
+		<p>这样自己做一个服务好像也不难啊！ ^_^！自己动手玩玩看吧！</p>
+	<br></div><br>
+</div>
+<a id="systemctl_timer"></a>
+<div class="block1">
+<h2>17.4 systemctl 针对 timer 的设置档</h2>
+	<p>有时候，某些服务你想要定期运行，或者是开机后运行，或者是什么服务启动多久后运行等等的。在过去，我们大概都是使用 crond 这个服务来定期处理，
+	不过，既然现在有一直常驻在内存当中的 systemd 这个好用的东西，加上这 systemd 有个协力服务，名为 timers.target 的家伙，这家伙可以协助定期处理各种任务！
+	那么，除了 crond 之外，如何使用 systemd 内置的 time 来处理各种任务呢？这就是本小节的重点啰！</p>
+	<ul class="toplist"><li>systemd.timer 的优势</li></ul>
+	<p>在 archlinux 的官网 wiki 上面有提到，为啥要使用 systemd.timer 呢？</p>
+	<ul>
+		<li>由于所有的 systemd 的服务产生的信息都会被纪录 (log)，因此比 crond 在 debug 上面要更清楚方便的多；</li>
+		<li>各项 timer 的工作可以跟 systemd 的服务相结合；</li>
+		<li>各项 timer 的工作可以跟 control group (cgroup，用来取代 /etc/secure/limit.conf 的功能) 结合，来限制该工作的资源利用</li>
+	</ul>
+	<p>虽然还是有些弱点啦～例如 systemd 的 timer 并没有 email 通知的功能 (除非自己写一个)，也没有类似 anacron 的一段时间内的随机采样功能 (random_delay)，
+	不过，总体来说，还是挺不错的！此外，相对于 crond 最小的单位到分， systemd  是可以到秒甚至是毫秒的单位哩！相当有趣！</p>
+	<ul class="toplist"><li>任务需求</li></ul>
+	<p>基本上，想要使用 systemd 的 timer 功能，你必须要有几个要件：</p>
+	<ul>
+	<li>系统的 timer.target 一定要启动</li>
+	<li>要有个 sname.service 的服务存在 (sname 是你自己指定的名称)</li>
+	<li>要有个 sname.timer 的时间启动服务存在</li>
+	</ul>
+	<p>满足上面的需求就 OK 了！有没有什么案例可以来实作看看？这样说好了，我们上个小节不是才自己做了个 backup.service 的服务吗？那么能不能将这个 backup.service 
+	用在定期运行上面呢？好啊！那就来测试看看！</p>
+	<ul class="toplist"><li>sname.timer 的设置值</li></ul>
+	<p>你可以到 /etc/systemd/system 底下去创建这个 *.timer 档，那这个文件的内容要项有哪些东西呢？基本设置主要有底下这些： (man systemd.timer &amp; man systemd.time)</p>
+<table class="news" style="width: 95%">
+<tbody><tr class="theader"><td colspan="2">[Timer] 部份</td></tr>
+<tr class="theader"><td>设置参数</td><td>参数意义说明</td></tr>
+<tr>
+	<td>OnActiveSec</td>
+	<td>当 timers.target 启动多久之后才运行这只 unit</td></tr>
+<tr>
+	<td>OnBootSec</td>
+	<td>当开机完成后多久之后才运行</td></tr>
+<tr>
+	<td>OnStartupSec</td>
+	<td>当 systemd 第一次启动之后过多久才运行</td></tr>
+<tr>
+	<td>OnUnitActiveSec</td>
+	<td>这个 timer 设置档所管理的那个 unit 服务在最后一次启动后，隔多久后再运行一次的意思</td></tr>
+<tr>
+	<td>OnUnitInactiveSec</td>
+	<td>这个 timer 设置档所管理的那个 unit 服务在最后一次停止后，隔多久再运行一次的意思。</td></tr>
+<tr>
+	<td>OnCalendar</td>
+	<td>使用实际时间 (非循环时间) 的方式来启动服务的意思！至于时间的格式后续再来谈。</td></tr>
+<tr>
+	<td>Unit</td>
+	<td>一般来说不太需要设置，因此如同上面刚刚提到的，基本上我们设置都是 sname.server + sname.timer，那如果你的 sname 并不相同时，那在 .timer 的文件中，
+		就得要指定是哪一个 service unit 啰！</td></tr>
+<tr>
+	<td>Persistent</td>
+	<td>当使用 OnCalendar 的设置时，指定该功能要不要持续进行的意思。通常是设置为 yes ，比较能够满足类似 anacron 的功能喔！</td></tr>
+</tbody></table>
+	<p>基本的项目仅有这些而已，在设置上其实并不困难啦！</p>
+	<ul class="toplist"><li>使用于 OnCalendar 的时间</li></ul>
+	<p>如果你想要从 crontab 转成这个 timer 功能的话，那么对于时间设置的格式就得要了解了解～基本上的格式如下所示：</p>
+<table class="term"><tbody><tr><td class="term"><pre>语法：英文周名  YYYY-MM-DD  HH:MM:SS
+范例：Thu       2015-08-13  13:40:00
+</pre></td></tr></tbody></table>
+	<p>上面谈的是基本的语法，你也可以直接使用间隔时间来处理！常用的间隔时间单位有：</p>
+	<ul>
+		<li>us 或 usec：微秒 (10<sup>-6</sup> 秒)</li>
+		<li>ms 或 msec：毫秒 (10<sup>-3</sup> 秒)</li>
+		<li>s, sec, second, seconds</li>
+		<li>m, min, minute, minutes</li>
+		<li>h, hr, hour, hours</li>
+		<li>d, day, days</li>
+		<li>w, week, weeks</li>
+		<li>month, months</li>
+		<li>y, year, years</li>
+	</ul>
+	<p>常见的使用范例有：</p>
+<table class="term"><tbody><tr><td class="term"><pre>隔 3 小时：             3h  或 3hr 或 3hours
+隔 300 分钟过 10 秒：   10s 300m
+隔 5 天又 100 分钟：    100m 5day
+<span class="term_say"># 通常英文的写法，小单位写前面，大单位写后面～所以先秒、再分、再小时、再天数等～</span>
+</pre></td></tr></tbody></table>
+	<p>此外，你也可以使用英文常用的口语化日期代表，例如 today, tomorrow 等！假设今天是 2015-08-13 13:50:00 的话，那么：</p>
+<table class="news" style="width: 80%">
+<tbody><tr class="theader"><td>英文口语</td><td>实际的时间格式代表</td></tr>
+<tr>
+	<td>now</td>		<td>Thu 2015-08-13 13:50:00</td></tr>
+<tr>
+	<td>today</td>		<td>Thu 2015-08-13 00:00:00</td></tr>
+<tr>
+	<td>tomorrow</td>	<td>Thu 2015-08-14 00:00:00</td></tr>
+<tr>
+	<td>hourly</td>		<td>*-*-* *:00:00</td></tr>
+<tr>
+	<td>daily</td>		<td>*-*-* 00:00:00</td></tr>
+<tr>
+	<td>weekly</td>		<td>Mon *-*-* 00:00:00</td></tr>
+<tr>
+	<td>monthly</td>	<td>*-*-01 00:00:00</td></tr>
+<tr>
+	<td>+3h10m</td>		<td>Thu 2015-08-13 17:00:00</td></tr>
+<tr>
+	<td>2015-08-16</td>	<td>Sun 2015-08-16 00:00:00</td></tr>
+</tbody></table>
+	<ul class="toplist"><li>一个循环时间运作的案例</li></ul>
+	<p>现在假设这样：</p>
+	<ul>
+	<li>开机后 2 小时开始运行一次这个 backup.service</li>
+	<li>自从第一次运行后，未来我每两天要运行一次 backup.service</li>
+	</ul>
+	<p> 好了，那么应该如何处理这个脚本呢？可以这样做喔！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">vim /etc/systemd/system/backup.timer</span>
+<span class="term_write">[Unit]
+Description=backup my server timer
+[Timer]
+OnBootSec=2hrs
+OnUnitActiveSec=2days
+[Install]
+WantedBy=multi-user.target</span>
+<span class="term_say"># 只要这样设置就够了！保存离开吧！</span>
+[root@study ~]# <span class="term_command">systemctl daemon-reload</span>
+[root@study ~]# <span class="term_command">systemctl enable backup.timer</span>
+[root@study ~]# <span class="term_command">systemctl restart backup.timer</span>
+[root@study ~]# <span class="term_command">systemctl list-unit-files | grep backup</span>
+backup.service          disabled   <span class="term_note"># 这个不需要启动！只要 enable backup.timer 即可！</span>
+backup.timer            enabled
+[root@study ~]# <span class="term_command">systemctl show timers.target</span>
+ConditionTimestamp=Thu 2015-08-13 14:31:11 CST      <span class="term_note"># timer 这个 unit 启动的时间！</span>
+[root@study ~]# <span class="term_command">systemctl show backup.service</span>
+ExecMainExitTimestamp=Thu 2015-08-13 14:50:19 CST   <span class="term_note"># backup.service 上次运行的时间</span>
+[root@study ~]# <span class="term_command">systemctl show backup.timer</span>
+NextElapseUSecMonotonic=2d 19min 11.540653s         <span class="term_note"># 下一次运行距离 timers.target 的时间</span>
+</pre></td></tr></tbody></table>
+	<p>如上表所示，我上次运行 backup.service 的时间是在 2015-08-13 14:50 ，由于设置两个小时运行一次，因此下次应该是 2015-08-15 14:50 运行才对！
+	由于 timer 是由 timers.target 这个 unit 所管理的，而这个 timers.target 的启动时间是在 2015-08-13 14:31 ，
+	要注意，最终 backup.timer 所纪录的下次运行时间，其实是与 timers.target 所纪录的时间差！因此是『 2015-08-15 14:50 - 2015-08-13 14:31 』才对！
+	所以时间差就是 2d 19min 啰！</p>
+	<ul class="toplist"><li>一个固定日期运作的案例</li></ul>
+	<p>上面的案例是固定周期运作一次，那如果我希望不管上面如何运作了，我都希望星期天凌晨 2 点运作这个备份程序一遍呢？请注意，因为已经存在 backup.timer 了！
+	所以，这里我用 backup2.timer 来做区隔喔！</p>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">vim /etc/systemd/system/backup2.timer</span>
+<span class="term_write">[Unit]
+Description=backup my server timer2
+[Timer]
+OnCalendar=Sun *-*-* 02:00:00
+Persistent=true
+Unit=backup.service
+[Install]
+WantedBy=multi-user.target</span>
+[root@study ~]# <span class="term_command">systemctl daemon-reload</span>
+[root@study ~]# <span class="term_command">systemctl enable backup2.timer</span>
+[root@study ~]# <span class="term_command">systemctl start backup2.timer</span>
+[root@study ~]# <span class="term_command">systemctl show backup2.timer</span>
+NextElapseUSecRealtime=45y 7month 1w 6d 10h 30min
+</pre></td></tr></tbody></table>
+	<p>与循环时间运作差异比较大的地方，在于这个 OnCalendar 的方法对照的时间并不是 times.target 的启动时间，而是 Unix 标准时间！
+	亦即是 1970-01-01 00:00:00 去比较的！因此，当你看到最后出现的 NextElapseUSecRealtime 时，哇！下一次运行还要 45 年 + 7 个月 
+	+ 1 周 + 6 天 + 10 小时过 30 分～刚看到的时候，鸟哥确实因此揉了揉眼睛～确定没有看错...这才了解原来比对的是『日历时间』而不是某个
+	unit 的启动时间啊！呵呵！</p>
+	<p>透过这样的方式，你就可以使用 systemd 的 timer 来制作属于你的时程规划服务啰！</p>
+</div>
+<a id="illustrations"></a>
+<div class="block1">
+<h2>17.5 CentOS 7.x 缺省启动的服务简易说明</h2>
+		<p>随着 Linux 上面软件支持性越来越多，加上自由软件蓬勃的发展，我们可以在 Linux 上面用的 daemons 
+		真的越来越多了。所以，想要写完所有的 daemons 介绍几乎是不可能的，因此，鸟哥这里仅介绍几个很常见的 daemons 而已，
+		更多的信息呢，就得要麻烦你自己使用 systemctl list-unit-files --type=service 去查找啰！
+		底下的建议主要是针对 Linux 单机服务器的角色来说明的，不是桌面型的环境喔！</p>
+<table class="news" style="width: 95%">
+<tbody><tr class="theader"><td colspan="2">CentOS 7.x 缺省启动的服务内容</td></tr>
+<tr class="theader"><td style="width: 120px">服务名称</td><td>功能简介</td></tr>
+<tr>
+	<td class="tcenter">abrtd</td>
+	<td><span style="font-weight: bolder">(系统)</span>abrtd 服务可以提供用户一些方式，让用户可以针对不同的应用软件去设计错误登录的机制，
+		当软件产生问题时，用户就可以根据 abrtd 的注册表来进行错误克服的行为。还有其他的 abrt-xxx.service 
+		均是使用这个服务来加强应用程序 debug 任务的。</td></tr>
+<tr>
+	<td class="tcenter">accounts-daemon<br>(可关闭)</td>
+	<td><span style="font-weight: bolder">(系统)</span>使用 accountsservice 计划所提供的一系列 D-Bus 界面来进行用户帐号信息的查找。
+		基本上是与 useradd, usermod, userdel 等软件有关。</td></tr>
+<tr>
+	<td class="tcenter">alsa-X<br>(可关闭)</td>
+	<td><span style="font-weight: bolder">(系统)</span>开头为 alsa 的服务有不少，这些服务大部分都与音效有关！一般来说，
+		服务器且不开图形界面的话，这些服务可以关闭！</td></tr>
+<tr style="background-color: #dddddd;">
+	<td class="tcenter" style="font-weight: bold">atd</td>
+	<td><span style="font-weight: bolder">(系统)</span>单一的例行性工作调度，详细说明请参考<a href="0430cron.html#atjob">第十五章</a>。
+	抵挡机制的设置档在 /etc/at.{allow,deny} 喔！</td></tr>
+<tr style="background-color: #dddddd;">
+	<td class="tcenter" style="font-weight: bold">auditd</td>
+	<td><span style="font-weight: bolder">(系统)</span>还记得<a href="0440processcontrol.html#auditd">前一章的 SELinux 所需服务</a>吧？
+        这就是其中一项，可以让系统需 SELinux 审核的消息写入 /var/log/audit/audit.log 中。</td></tr>
+<tr>
+	<td class="tcenter">avahi-daemon<br>(可关闭)</td>
+	<td><span style="font-weight: bolder">(系统)</span>也是一个用户端的服务，可以透过 Zeroconf 自动的分析与管理网络。
+        Zeroconf 较常用在笔记型电脑与行动设备上，所以我们可以先关闭他啦！</td></tr>
+<tr>
+	<td class="tcenter">brandbot<br>rhel-*<br></td>
+	<td><span style="font-weight: bolder">(系统)</span>这些服务大多用于开机过程中所需要的各种侦测环境的脚本，同时也提供网络界面的启动与关闭。
+		基本上，你不要关闭掉这些服务比较妥当！</td></tr>
+<tr>
+	<td class="tcenter">chronyd<br>ntpd<br>ntpdate</td>
+	<td><span style="font-weight: bolder">(系统)</span>都是网络校正时间的服务！一般来说，你可能需要的仅有 chronyd 而已！</td></tr>
+<tr style="background-color: #dddddd;">
+	<td class="tcenter" style="font-weight: bold">cpupower</td>
+	<td><span style="font-weight: bolder">(系统)</span>提供 CPU 的运作规范～可以参考 /etc/sysconfig/cpupower 得到更多的信息！
+		这家伙与你的 CPU 使用情况有关喔！</td></tr>
+<tr style="background-color: #dddddd;">
+	<td class="tcenter" style="font-weight: bold">crond</td>
+	<td><span style="font-weight: bolder">(系统)</span>系统设置档为 /etc/crontab，详细数据可参考<a href="0430cron.html#cron">第十五章</a>的说明。</td></tr>
+<tr>
+	<td class="tcenter">cups<br>(可关闭)</td>
+	<td><span style="font-weight: bolder">(系统/网络)</span>用来管理打印机的服务，可以提供网络连接的功能，有点类似打印服务器的功能哩！
+        你可以在 Linux 本机上面以浏览器的 http://localhost:631 来管理打印机喔！由于我们目前没有打印机，所以可以暂时关闭他。</td></tr>
+<tr>
+	<td class="tcenter">dbus</td>
+	<td><span style="font-weight: bolder">(系统)</span>使用 D-Bus 的方式在不同的应用程序之间发送消息，
+	使用的方向例如应用程序间的消息传递、每个用户登录时提供的消息数据等。</td></tr>
+<tr>
+	<td class="tcenter">dm-event<br>multipathd</td>
+	<td><span style="font-weight: bolder">(系统)</span>监控设备对应表 (device mapper) 的主要服务，当然不能关掉啊！
+	否则就无法让 Linux 使用我们的周边设备与保存设备了！</td></tr>
+<tr>
+	<td class="tcenter">dmraid-activation<br>mdmonitor</td>
+	<td><span style="font-weight: bolder">(系统)</span>用来启动 Software RAID 的重要服务！最好不要关闭啦！虽然你可能没有 RAID。</td></tr>
+<tr>
+	<td class="tcenter">dracut-shutdown</td>
+	<td><span style="font-weight: bolder">(系统)</span>用来处理 initramfs 的相关行为，这与开机流程相关性较高～</td></tr>
+<tr>
+	<td class="tcenter">ebtables</td>
+	<td><span style="font-weight: bolder">(系统/网络)</span>透过类似 iptables 这种防火墙规则的设置方式，设计网络卡作为桥接时的封包分析政策。
+		其实就是防火墙。不过与底下谈到的防火墙应用不太一样。如果没有使用虚拟化，或者启用了 firewalld ，这个服务可以不启动。</td></tr>
+<tr>
+	<td class="tcenter">emergency<br>rescue<br></td>
+	<td><span style="font-weight: bolder">(系统)</span>进入紧急模式或者是救援模式的服务</td></tr>
+<tr style="background-color: #dddddd;">
+	<td class="tcenter" style="font-weight: bold">firewalld</td>
+	<td><span style="font-weight: bolder">(系统/网络)</span>就是防火墙！以前有 iptables 与 ip6tables 等防火墙机制，新的 firewalld 搭配
+		firewall-cmd 指令，可以快速的建置好你的防火墙系统喔！因此，从 CentOS 7.1 以后，iptables 服务的启动脚本已经被忽略了！
+		请使用 firewalld 来取代 iptables 服务喔！</td></tr>
+<tr>
+	<td class="tcenter">gdm</td>
+	<td><span style="font-weight: bolder">(系统)</span>GNOME 的登录管理员，就是图形界面上一个很重要的登录管理服务！</td></tr>
+<tr>
+	<td class="tcenter">getty@</td>
+	<td><span style="font-weight: bolder">(系统)</span>就是要在本机系统产生几个文本界面 (tty) 登录的服务啰！</td></tr>
+<tr>
+	<td class="tcenter">hyper*<br>ksm*<br>libvirt*<br>vmtoolsd</td>
+	<td><span style="font-weight: bolder">(系统)</span>跟创建虚拟机有关的许多服务！如果你不玩虚拟机，
+	那么这些服务可以先关闭。此外，如果你的 Linux 本来就在虚拟机的环境下，那这些服务对你就没有用！因为这些服务是让实体机器来创建虚拟机的！</td></tr>
+<tr>
+	<td class="tcenter">irqbalance</td>
+	<td><span style="font-weight: bolder">(系统)</span>如果你的系统是多核心的硬件，那么这个服务要启动，
+        因为它可以自动的分配系统中断 (IRQ) 之类的硬件资源。</td></tr>
+<tr>
+	<td class="tcenter">iscsi*</td>
+	<td><span style="font-weight: bolder">(系统)</span>可以挂载来自网络磁盘机的服务！这个服务可以在系统内仿真好贵的 SAN 网络磁盘。
+	如果你确定系统上面没有挂载这种网络磁盘，也可以将他关闭的。</td></tr>
+<tr>
+	<td class="tcenter">kdump<br>(可关闭)</td>
+	<td><span style="font-weight: bolder">(系统)</span>在安装 CentOS 的章节就谈过这东西，主要是 Linux 核心如果出错时，用来纪录内存的东西。
+	鸟哥觉得不需要启动他！除非你是核心骇客！</td></tr>
+<tr>
+	<td class="tcenter">lvm2-*</td>
+	<td><span style="font-weight: bolder">(系统)</span>跟 LVM 相关性较高的许多服务，当然也不能关！不然系统上面的 LVM2 就没人管了！</td></tr>
+<tr>
+	<td class="tcenter">microcode</td>
+	<td><span style="font-weight: bolder">(系统)</span>Intel 的 CPU 会提供一个插件的微指令集提供系统运作，
+        不过，如果你没有下载 Intel 相关的指令集文件，那么这个服务不需要启动的，也不会影响系统运作。</td></tr>
+<tr style="background-color: #dddddd;">
+	<td class="tcenter" style="font-weight: bold">ModemManager<br>network<br>NetworkManager*</td>
+	<td><span style="font-weight: bolder">(系统/网络)</span>主要就是调制解调器、网络设置等服务！进入 CentOS 7 之后，系统似乎不太希望我们使用 network 服务了，
+		比较建议的是使用 NetworkManager 搭配 nmcli 指令来处理网络设置～所以，反而是 NetworkManager 要开，而 network 不用开哩！</td></tr>
+<tr>
+	<td class="tcenter">quotaon</td>
+	<td><span style="font-weight: bolder">(系统)</span>启动 Quota 要用到的服务喔！</td></tr>
+<tr style="background-color: #dddddd;">
+	<td class="tcenter" style="font-weight: bold">rc-local</td>
+	<td><span style="font-weight: bolder">(系统)</span>兼容于 /etc/rc.d/rc.local 的调用方式！只是，你必须要让 /etc/rc.d/rc.local 具有 x 的权限后，
+	这个服务才能真的运作！否则，你写入 /etc/rc.d/rc.local 的脚本还是不会运作的喔！</td></tr>
+<tr style="background-color: #dddddd;">
+	<td class="tcenter" style="font-weight: bold">rsyslog</td>
+	<td><span style="font-weight: bolder">(系统)</span>这个服务可以记录系统所产生的各项消息，
+        包括 /var/log/messages 内的几个重要的注册表啊。</td></tr>
+<tr>
+	<td class="tcenter">smartd</td>
+	<td><span style="font-weight: bolder">(系统)</span>这个服务可以自动的侦测硬盘状态，如果硬盘发生问题的话，
+        还能够自动的回报给系统管理员，是个非常有帮助的服务喔！不可关闭他啊！</td></tr>
+<tr>
+	<td class="tcenter">sysstat</td>
+	<td><span style="font-weight: bolder">(系统)</span>事实上，我们的系统有只名为 sar 的指令会记载某些时间点下，系统的资源使用情况，包括 CPU/流量/输入输出量等，
+		当 sysstat 服务启动后，这些纪录的数据才能够写入到纪录档 (log) 里面去！</td></tr>
+<tr>
+	<td class="tcenter">systemd-*</td>
+	<td><span style="font-weight: bolder">(系统)</span>大概都是属于系统运作过程所需要的服务，没必要都不要更动它的缺省状态！</td></tr>
+<tr>
+	<td class="tcenter">plymount*<br>upower</td>
+	<td><span style="font-weight: bolder">(系统)</span>与图形界面的使用相关性较高的一些服务！没启动图形界面时，这些服务可以暂时不管他！</td></tr>
+</tbody></table>
+		<p>上面的服务是 CentOS 7.x 缺省有启动的，这些缺省启动的服务很多是针对台式机所设计的，所以啰，如果你的 Linux 
+		主机用途是在服务器上面的话，那么有很多服务是可以关闭的啦！如果你还有某些不明白的服务想要关闭的，
+		请务必要搞清楚该服务的功能为何喔！举例来说，那个 rsyslog 就不能关闭，如果你关掉他的话，系统就不会记录注册表，
+		那你的系统所产生的警告消息就无法记录起来，你将无法进行 debug 喔。</p>
+		<p>底下鸟哥继续说明一些可能在你的系统当中的服务，只是缺省并没有启动这个服务就是了。只是说明一下，
+		各服务的用途还是需要您自行查找相关的文章啰。</p>
+<table class="news" style="width: 95%">
+<tbody><tr class="theader"><td colspan="2">其他服务的简易说明</td></tr>
+<tr class="theader"><td style="width: 120px">服务名称</td><td>功能简介</td></tr>
+<tr>
+	<td class="tcenter">dovecot</td>
+	<td><span style="font-weight: bolder">(网络)</span>可以设置 POP3/IMAP 等收受信件的服务，如果你的 Linux 主机是 email server
+        才需要这个服务，否则不需要启动他啦！</td></tr>
+<tr>
+	<td class="tcenter">httpd</td>
+	<td><span style="font-weight: bolder">(网络)</span>这个服务可以让你的 Linux 服务器成为 www server 喔！</td></tr>
+<tr>
+	<td class="tcenter">named</td>
+	<td><span style="font-weight: bolder">(网络)</span>这是领域名称服务器 (Domain Name System) 的服务，
+        这个服务非常重要，但是设置非常困难！目前应该不需要这个服务啦！</td></tr>
+<tr>
+	<td class="tcenter">nfs<br>nfs-server</td>
+	<td><span style="font-weight: bolder">(网络)</span>这就是 Network Filesystem，是 Unix-Like 之间互相作为网络磁盘机的一个功能。</td></tr>
+<tr>
+	<td class="tcenter">smb<br>nmb</td>
+	<td><span style="font-weight: bolder">(网络)</span>这个服务可以让 Linux 仿真成为 Windows 上面的网上邻居。
+        如果你的 Linux 主机想要做为 Windows 用户端的网络磁盘机服务器，这玩意儿得要好好玩一玩。</td></tr>
+<tr>
+	<td class="tcenter">vsftpd</td>
+	<td><span style="font-weight: bolder">(网络)</span>作为文件传输服务器 (FTP) 的服务。</td></tr>
+<tr>
+	<td class="tcenter">sshd</td>
+	<td><span style="font-weight: bolder">(网络)</span>这个是远程连接服务器的软件功能，
+        这个通信协定比 telnet 好的地方在于 sshd 在发送数据时可以进行加密喔！这个服务不要关闭他啦！</td></tr>
+<tr>
+	<td class="tcenter">rpcbind</td>
+	<td><span style="font-weight: bolder">(网络)</span>达成 RPC 协定的重要服务！包括 NFS, NIS 等等都需要这东西的协助！</td></tr>
+<tr>
+	<td class="tcenter">postfix</td>
+	<td><span style="font-weight: bolder">(网络)</span>寄件的邮件主机～因为系统还是会产生很多 email 消息！例如 crond / atd 就会发送 email 给本机用户！
+	所以这个服务千万不能关！即使你不是 mail server 也是要启用这服务才行！</td></tr>
+</tbody></table>
+</div>
+<a id="hint"></a>
+<div class="block1">
+<h2>17.6 重点回顾</h2>
+<ul class="text_import2">
+	<li>早期的服务管理使用 systemV 的机制，透过 /etc/init.d/*, service, chkconfig, setup 等指令来管理服务的启动/关闭/缺省启动；</li>
+	<li>从 CentOS 7.x 开始，采用 systemd 的机制，此机制最大功能为平行处理，并采单一指令管理 (systemctl)，开机速度加快！</li>
+	<li>systemd 将各服务定义为 unit，而 unit 又分类为 service, socket, target, path, timer 等不同的类别，方便管理与维护</li>
+	<li>启动/关闭/重新启动的方式为： systemctl [start|stop|restart] unit.service</li>
+	<li>设置缺省启动/缺省不启动的方式为： systemctl [enable|disable] unit.service</li>
+	<li>查找系统所有启动的服务用 systemctl list-units --type=service 而查找所有的服务 (含不启动) 使用 systemctl list-unit-files --type=service</li>
+	<li>systemd 取消了以前的 runlevel 概念 (虽然还是有兼容的 target)，转而使用不同的 target 操作环境。常见操作环境为 multi-user.targer 与 graphical.target。
+		不重新开机而转不同的操作环境使用 systemctl isolate unit.target，而设置缺省环境则使用 systemctl set-default unit.target</li>
+	<li>systemctl 系统缺省的设置档主要放在 /usr/lib/systemd/system，管理员若要修改或自行设计时，则建议放在 /etc/systemd/system/ 目录下。</li>
+	<li>管理员应使用 man systemd.unit, man systemd.service, man systemd.timer 查找 /etc/systemd/system/ 底下设置档的语法，
+		并使用 systemctl daemon-reload 加载后，才能自行撰写服务与管理服务喔！</li>
+	<li>除了 atd 与 crond 之外，可以 透过 systemd.timer 亦即 timers.target 的功能，来使用 systemd 的时间管理功能。</li>
+	<li>一些不需要的服务可以关闭喔！</li>
+</ul>
+</div>
+<a id="ex"></a>
+<div class="block1">
+<h2>17.7 本章习题</h2>
+( 要看答案请将鼠标移动到『答：』底下的空白处，按下左键圈选空白处即可察看 )
+<ul>
+	<li>情境仿真题：透过设置、启动、观察等机制，完整的了解一个服务的启动与观察现象。<br><br>
+	<ul>
+		<li>目标：了解 daemon 的控管机制，以 sshd daemon 为例；</li>
+		<li>前提：需要对本章已经了解，尤其是 systemd 的管理 部分；</li>
+		<li>需求：已经有 sshd 这个服务，但没有修改过端口口！</li>
+	</ul><br>
+	在本情境中，我们使用 sshd 这个服务来观察，主要是假设 sshd 要开立第二个服务，这个第二个服务的 port 放行于 222 ，那该如何处理？
+	可以这样做看看：<br><br>
+	<ol>
+		<li>基本上 sshd 几乎是一定会安装的服务！只是我们还是来确认看看好了！<br>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">systemctl status sshd.service</span>
+sshd.service - OpenSSH server daemon
+   Loaded: loaded (/usr/lib/systemd/system/sshd.service; enabled)
+   Active: active (running) since Thu 2015-08-13 14:31:12 CST; 20h ago
+[root@study ~]# <span class="term_command">cat /usr/lib/systemd/system/sshd.service</span>
+[Unit]
+Description=OpenSSH server daemon
+After=network.target sshd-keygen.service
+Wants=sshd-keygen.service
+[Service]
+EnvironmentFile=/etc/sysconfig/sshd
+<span class="term_write">ExecStart=/usr/sbin/sshd -D $OPTIONS</span>
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=on-failure
+RestartSec=42s
+[Install]
+WantedBy=multi-user.target
+</pre></td></tr></tbody></table><br></li>
+		<li>透过观察 man sshd，我们可以查找到 sshd 的设置档位于 /etc/ssh/sshd_config 这个文件内！再 man sshd_config 也能知道原来端口口是使用 Port 来规范的！
+		因此，我想要创建第二个设置档，文件名假设为 /etc/ssh/sshd2_config 这样！<br>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">cd /etc/ssh</span>
+[root@study ssh]# <span class="term_command">cp sshd_config sshd2_config</span>
+[root@study ssh]# <span class="term_command">vim sshd2_config</span>
+<span class="term_write">Port 222</span>
+<span class="term_say"># 随意找个地方加上这个设置值！你可以在文件的最下方加入这行也 OK 喔！</span>
+</pre></td></tr></tbody></table><br></li>
+		<li>接下来开始修改启动脚本服务档！<br>
+<table class="term"><tbody><tr><td class="term"><pre>[root@study ~]# <span class="term_command">cd /etc/systemd/system</span>
+[root@study system]# <span class="term_command">cp /usr/lib/systemd/system/sshd.service sshd2.service</span>
+[root@study system]# <span class="term_command">vim sshd2.service</span>
+[Unit]
+<span class="term_write">Description=OpenSSH server daemon 2</span>
+After=network.target sshd-keygen.service
+Wants=sshd-keygen.service
+[Service]
+EnvironmentFile=/etc/sysconfig/sshd
+<span class="term_write">ExecStart=/usr/sbin/sshd -f /etc/ssh/sshd2_config -D $OPTIONS</span>
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=on-failure
+RestartSec=42s
+[Install]
+WantedBy=multi-user.target
+[root@study system]# <span class="term_command">systemctl daemon-reload</span>
+[root@study system]# <span class="term_command">systemctl enable sshd2</span>
+[root@study system]# <span class="term_command">systemctl start sshd2</span>
+[root@study system]# <span class="term_command">tail -n 20 /var/log/messages</span>
+# semanage port -a -t PORT_TYPE -p tcp 222
+    where PORT_TYPE is one of the following: ssh_port_t, vnc_port_t, xserver_port_t.
+<span class="term_say"># 认真的看！你会看到上面这两句！也就是 SELinux 的端口口问题！请解决！</span>
+[root@study system]# <span class="term_command">semanage port -a -t ssh_port_t -p tcp 222</span>
+[root@study system]# <span class="term_command">systemctl start sshd2</span>
+[root@study system]# <span class="term_command">netstat -tlnp | grep ssh</span>
+tcp        0      0 0.0.0.0:22    0.0.0.0:*     LISTEN      1300/sshd
+tcp        0      0 0.0.0.0:<span class="term_write">222</span>   0.0.0.0:*     LISTEN      15275/sshd
+tcp6       0      0 :::22         :::*          LISTEN      1300/sshd
+tcp6       0      0 :::<span class="term_write">222</span>        :::*          LISTEN      15275/sshd
+</pre></td></tr></tbody></table></li>
+	</ol></li>
+</ul>
+<hr>简答题部分：
+<ul>
+	<li>使用 netstat -tul 与 netstat -tunl 有什么差异？为何会这样？
+	<div class="blockex">
+		使用 n 时， netstat 就不会使用主机名称与服务名称 (hostname &amp; service_name) 来显示，
+		取而代之的则是以 IP 及 port number 来显示的。IP 的分析与 /etc/hosts 及 /etc/resolv.conf 有关，
+		这个在未来服务器篇才会提到。至于 port number 则与 /etc/services 有关，请自行参考喔！ ^_^
+	</div></li>
+	<li>你能否找出来，启动 port 3306 这个端口口的服务为何？
+	<div class="blockex">
+		透过搜索 /etc/services 内容，得到 port 3306 为 mysql 所启动的端口口喔！查找 google，
+		可得到 mysql 为一种网络数据库系统软件。
+	</div></li>
+	<li>你可以透过哪些指令查找到目前系统缺省开机会启动的服务？
+	<div class="blockex">
+		systemctl list-units 以及 systemctl list-unit-files
+	</div></li>
+	<li>承上，那么哪些服务『目前』是在启动的状态？
+	<div class="blockex">
+		结果同上！只是若要进一步的信息，应该使用 systemctl status [unit.service] 一项一项查找！
+	</div></li>
+</ul>
+</div>
+<a id="reference"></a>
+<div class="block1">
+<h2>17.8 参考数据与延伸阅读</h2>
+<ul>
+	<li>freedesktop.org 的重要介绍：<a href="http://www.freedesktop.org/wiki/Software/systemd/" target="_blank">http://www.freedesktop.org/wiki/Software/systemd/</a></li>
+	<li>Red Hat 官网的介绍：<a href="https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/7/html/System_Administrators_Guide/chap-Managing_Services_with_systemd.html" target="_blank">https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/7<br>/html/System_Administrators_Guide/chap-Managing_Services_with_systemd.html</a></li>
+	<li>man systemd.unit, man systemd.service, man systemd.kill, man systemd.timer, man systemd.time</li>
+	<li>关于 timer 的相关介绍：
+		<ul>
+		<li>archlinux.org: <a href="https://wiki.archlinux.org/index.html/Systemd/Timers" target="_blank">https://wiki.archlinux.org/index.html/Systemd/Timers</a></li>
+		<li>Janson's Blog: <a href="http://jason.the-graham.com/2013/03/06/how-to-use-systemd-timers/" target="_blank">http://jason.the-graham.com/2013/03/06/how-to-use-systemd-timers/</a></li>
+		<li>freedesktop.org: <a href="http://www.freedesktop.org/software/systemd/man/systemd.timer.html" target="_blank">http://www.freedesktop.org/software/systemd/man/systemd.timer.html</a></li>
+		</ul></li>
+</ul>
+</div>
+</div>	<!-- mainarea -->
+</div>  
+</body></html>
